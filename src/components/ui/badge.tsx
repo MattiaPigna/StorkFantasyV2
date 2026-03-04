@@ -3,27 +3,24 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors",
   {
     variants: {
       variant: {
-        default: "border-transparent gradient-stork text-white",
-        secondary: "border-transparent bg-secondary text-secondary-foreground",
-        destructive: "border-transparent bg-destructive text-destructive-foreground",
-        outline: "text-foreground border-stork-dark-border",
-        success: "border-transparent bg-green-500/20 text-green-400 border-green-500/30",
-        warning: "border-transparent bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+        default: "border-transparent bg-gradient-to-r from-stork-orange to-stork-gold-dark text-black",
+        secondary: "border-stork-dark-border bg-stork-dark-card text-foreground",
+        destructive: "border-red-500/30 bg-red-500/15 text-red-400",
+        outline: "border-stork-dark-border text-muted-foreground",
+        success: "border-emerald-500/30 bg-emerald-500/15 text-emerald-400",
+        warning: "border-stork-gold/40 bg-stork-gold/10 text-stork-gold",
+        gold: "border-stork-gold/40 bg-gradient-to-r from-stork-gold/20 to-stork-gold-dark/20 text-stork-gold",
       },
     },
-    defaultVariants: {
-      variant: "default",
-    },
+    defaultVariants: { variant: "default" },
   }
 );
 
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
 
 function Badge({ className, variant, ...props }: BadgeProps) {
   return <div className={cn(badgeVariants({ variant }), className)} {...props} />;

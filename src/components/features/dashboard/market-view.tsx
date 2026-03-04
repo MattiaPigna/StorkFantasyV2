@@ -162,6 +162,7 @@ export function MarketView() {
         {filteredPlayers.map((player) => {
           const owned = team?.players.includes(player.id) ?? false;
           const canAfford = (team?.credits ?? 0) >= player.price;
+          const rosterFull = (team?.players.length ?? 0) >= (settings?.max_players_per_team ?? 15);
           const loading = actionLoading === player.id;
 
           return (
@@ -206,10 +207,10 @@ export function MarketView() {
                   ) : (
                     <Button
                       size="sm"
-                      disabled={loading || marketClosed || !canAfford}
+                      disabled={loading || marketClosed || !canAfford || rosterFull}
                       onClick={() => handleBuy(player)}
                     >
-                      {!canAfford ? "Non hai abbastanza SK" : "Acquista"}
+                      {rosterFull ? "Rosa piena" : !canAfford ? "SK insufficienti" : "Acquista"}
                     </Button>
                   )}
                 </div>

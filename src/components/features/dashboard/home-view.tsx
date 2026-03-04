@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Coins, Users, TrendingUp, Calendar, Tv } from "lucide-react";
+import { Trophy, Coins, Users, TrendingUp, Calendar, Tv, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
@@ -23,115 +23,93 @@ export function HomeView() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      const [prof, set, matchdays] = await Promise.all([
-        getProfile(user.id),
-        getAppSettings(),
-        getMatchdays(),
-      ]);
-
+      const [prof, set, matchdays] = await Promise.all([getProfile(user.id), getAppSettings(), getMatchdays()]);
       setProfile(prof);
       setSettings(set);
-
       const calculated = matchdays.filter((m) => m.status === "calculated");
       if (calculated.length > 0) setLastMatchday(calculated[0]);
-
-      if (prof) {
-        const t = await getMyTeam(user.id);
-        setTeam(t);
-      }
+      if (prof) setTeam(await getMyTeam(user.id));
       setIsLoading(false);
     }
     load();
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-stork-orange border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-2 border-stork-orange border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   const myPoints = team?.total_points ?? 0;
   const myCredits = team?.credits ?? 0;
   const myPlayersCount = team?.players.length ?? 0;
+  const lastDayPoints = lastMatchday ? (team?.matchday_points?.[lastMatchday.id] ?? 0) : null;
 
   return (
     <div className="p-4 lg:p-8 space-y-6 animate-fade-in">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">
-          Ciao, <span className="text-gradient">{profile?.manager_name ?? "Allenatore"}</span>!
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {profile?.team_name ?? "La tua squadra"}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground uppercase tracking-wider mb-1">Benvenuto</p>
+          <h1 className="text-3xl font-black">
+            <span className="text-gradient">{profile?.manager_name ?? "Allenatore"}</span>
+          </h1>
+          <p className="text-muted-foreground mt-1 flex items-center gap-2">
+            <Star className="w-3.5 h-3.5 text-stork-gold" />
+            {profile?.team_name ?? "La tua squadra"}
+          </p>
+        </div>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <Badge variant={settings?.market_open ? "success" : "secondary"} className="gap-1">
+            <span className={`w-1.5 h-1.5 rounded-full ${settings?.market_open ? "bg-emerald-400" : "bg-muted-foreground"}`} />
+            {settings?.market_open ? "Mercato Aperto" : "Mercato Chiuso"}
+          </Badge>
+          <Badge variant={settings?.lineup_locked ? "warning" : "success"} className="gap-1">
+            <span className={`w-1.5 h-1.5 rounded-full ${settings?.lineup_locked ? "bg-stork-gold" : "bg-emerald-400"}`} />
+            {settings?.lineup_locked ? "Formazione Bloccata" : "Formazione Libera"}
+          </Badge>
+        </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
-          icon={Trophy}
-          label="Punti Totali"
-          value={formatPoints(myPoints)}
-          color="text-stork-orange"
-          bgColor="bg-stork-orange/10"
-        />
-        <StatCard
-          icon={Coins}
-          label="Crediti"
-          value={formatCredits(myCredits)}
-          color="text-yellow-400"
-          bgColor="bg-yellow-500/10"
-        />
-        <StatCard
-          icon={Users}
-          label="Giocatori"
-          value={`${myPlayersCount}/15`}
-          color="text-blue-400"
-          bgColor="bg-blue-500/10"
-        />
+        <StatCard icon={Trophy} label="Punti Totali" value={formatPoints(myPoints)} color="text-stork-orange" bg="bg-stork-orange/10" border="border-stork-orange/20" glow />
+        <StatCard icon={Coins} label="Crediti SK" value={formatCredits(myCredits)} color="text-stork-gold" bg="bg-stork-gold/10" border="border-stork-gold/20" />
+        <StatCard icon={Users} label="Giocatori" value={`${myPlayersCount}/${settings?.max_players_per_team ?? 15}`} color="text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20" />
         <StatCard
           icon={TrendingUp}
           label="Ultima Giornata"
-          value={lastMatchday ? formatPoints(team?.matchday_points?.[lastMatchday.id] ?? 0) : "-"}
-          color="text-green-400"
-          bgColor="bg-green-500/10"
+          value={lastDayPoints !== null ? `${formatPoints(lastDayPoints)} pt` : "—"}
+          color="text-emerald-400"
+          bg="bg-emerald-500/10"
+          border="border-emerald-500/20"
         />
       </div>
 
-      {/* Status badges */}
-      <div className="flex flex-wrap gap-2">
-        <Badge variant={settings?.market_open ? "success" : "outline"}>
-          {settings?.market_open ? "🟢 Mercato Aperto" : "🔴 Mercato Chiuso"}
-        </Badge>
-        <Badge variant={settings?.lineup_locked ? "destructive" : "success"}>
-          {settings?.lineup_locked ? "🔒 Formazione Bloccata" : "✏️ Formazione Modificabile"}
-        </Badge>
-        {lastMatchday && (
-          <Badge variant="secondary">
-            <Calendar className="w-3 h-3 mr-1" />
-            Ultima: {lastMatchday.name}
-          </Badge>
-        )}
-      </div>
+      {/* Last matchday info */}
+      {lastMatchday && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-stork-dark border border-stork-dark-border">
+          <Calendar className="w-4 h-4 text-stork-orange shrink-0" />
+          <span className="text-sm text-muted-foreground">Ultima giornata calcolata:</span>
+          <span className="text-sm font-semibold text-foreground">{lastMatchday.name}</span>
+        </div>
+      )}
 
-      {/* Live Stream */}
+      {/* Live stream */}
       {settings?.youtube_url && (
-        <Card>
-          <CardHeader className="pb-3">
+        <Card className="border-red-500/20 overflow-hidden">
+          <CardHeader className="pb-3 bg-gradient-to-r from-red-500/5 to-transparent">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Tv className="w-4 h-4 text-red-500" />
+              <Tv className="w-4 h-4 text-red-400" />
               Live Stream
-              <Badge variant="destructive" className="text-xs">LIVE</Badge>
+              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 animate-pulse">● LIVE</Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="aspect-video rounded-lg overflow-hidden bg-muted">
+          <CardContent className="p-0">
+            <div className="aspect-video bg-black rounded-b-xl overflow-hidden">
               <iframe
                 src={settings.youtube_url.replace("watch?v=", "embed/")}
-                title="Live Stream StorkLeague"
+                title="Live Stream"
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -141,23 +119,24 @@ export function HomeView() {
         </Card>
       )}
 
-      {/* Matchday history */}
+      {/* Points history */}
       {team && Object.keys(team.matchday_points ?? {}).length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Storico Punti</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-stork-orange" />
+              Storico Punti
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {Object.entries(team.matchday_points)
-                .slice(0, 5)
-                .map(([dayId, pts]) => (
-                  <div key={dayId} className="flex justify-between items-center py-1.5 border-b border-stork-dark-border last:border-0">
-                    <span className="text-sm text-muted-foreground">Giornata</span>
-                    <span className="text-sm font-semibold text-stork-orange">{formatPoints(pts)} pt</span>
-                  </div>
-                ))}
-            </div>
+          <CardContent className="p-0">
+            {Object.entries(team.matchday_points).slice(0, 6).map(([dayId, pts], i) => (
+              <div key={dayId} className={`flex justify-between items-center px-5 py-3 ${i % 2 === 0 ? "bg-stork-dark/50" : ""}`}>
+                <span className="text-sm text-muted-foreground">Giornata {i + 1}</span>
+                <span className={`text-sm font-bold ${(pts as number) > 0 ? "text-stork-orange" : "text-muted-foreground"}`}>
+                  {formatPoints(pts as number)} pt
+                </span>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}
@@ -165,27 +144,18 @@ export function HomeView() {
   );
 }
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-  bgColor,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string;
-  color: string;
-  bgColor: string;
+function StatCard({ icon: Icon, label, value, color, bg, border, glow }: {
+  icon: React.ElementType; label: string; value: string;
+  color: string; bg: string; border: string; glow?: boolean;
 }) {
   return (
-    <Card className="hover:border-stork-orange/30 transition-colors">
+    <Card className={`border ${border} hover:shadow-card-hover transition-all duration-300 ${glow ? "hover:shadow-glow-orange" : ""}`}>
       <CardContent className="p-4">
-        <div className={`w-8 h-8 rounded-lg ${bgColor} flex items-center justify-center mb-2`}>
-          <Icon className={`w-4 h-4 ${color}`} />
+        <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mb-3`}>
+          <Icon className={`w-5 h-5 ${color}`} />
         </div>
-        <p className="text-2xl font-bold text-foreground">{value}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+        <p className={`text-2xl font-black ${color}`}>{value}</p>
+        <p className="text-xs text-muted-foreground mt-1">{label}</p>
       </CardContent>
     </Card>
   );

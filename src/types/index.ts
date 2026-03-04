@@ -92,6 +92,7 @@ export interface AppSettings {
   youtube_url: string | null;
   marquee_text: string | null;
   max_players_per_team: number;
+  lineup_size: number;
   initial_credits: number;
   updated_at: string;
 }
