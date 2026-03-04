@@ -105,7 +105,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <main className="flex-1 lg:ml-64 pt-28 lg:pt-0">{children}</main>
-      // ... (altre importazioni rimangono uguali)
+
+
+      
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -117,7 +119,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     getAppSettings().then(setSettings).catch(() => null);
   }, []);
 
-  // ... (handleLogout rimane uguale)
+
+      
 
   return (
     <div className="min-h-screen bg-background flex">
