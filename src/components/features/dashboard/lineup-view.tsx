@@ -45,18 +45,17 @@ export function LineupView() {
   }, []);
 
   const lineupSize = settings?.lineup_size ?? 11;
-  const pitchPositions = getPitchPositions(lineupSize);
+  const pitchSlots = getPitchPositions(lineupSize);
   const locked = settings?.lineup_locked ?? false;
   const myPlayers = players.filter((p) => team?.players.includes(p.id));
+  const playersInLineup = lineup.map((s) => s.player_id).filter(Boolean);
+  const filledSlots = playersInLineup.length;
 
   const getPlayerInSlot = useCallback((slotIdx: number): Player | null => {
     const slot = lineup[slotIdx];
     if (!slot?.player_id) return null;
     return players.find((p) => p.id === slot.player_id) ?? null;
   }, [lineup, players]);
-
-  const playersInLineup = lineup.map((s) => s.player_id).filter(Boolean);
-  const filledSlots = playersInLineup.length;
 
   function handleSlotClick(slotIdx: number) {
     if (locked) return;
@@ -66,21 +65,22 @@ export function LineupView() {
   function handlePlayerSelect(playerId: string) {
     if (selectedSlot === null || locked) return;
     setLineup((prev) => {
-      const newLineup = [...prev];
-      const otherIdx = newLineup.findIndex((s) => s.player_id === playerId && s.position !== selectedSlot);
-      if (otherIdx !== -1) newLineup[otherIdx] = { ...newLineup[otherIdx], player_id: null };
-      newLineup[selectedSlot] = { ...newLineup[selectedSlot], player_id: playerId };
-      return newLineup;
+      const next = [...prev];
+      const otherIdx = next.findIndex((s) => s.player_id === playerId && s.position !== selectedSlot);
+      if (otherIdx !== -1) next[otherIdx] = { ...next[otherIdx], player_id: null };
+      next[selectedSlot] = { ...next[selectedSlot], player_id: playerId };
+      return next;
     });
     setSelectedSlot(null);
   }
 
-  function handleRemoveFromSlot(slotIdx: number) {
+  function handleRemoveFromSlot(slotIdx: number, e: React.MouseEvent) {
+    e.stopPropagation();
     if (locked) return;
     setLineup((prev) => {
-      const newLineup = [...prev];
-      newLineup[slotIdx] = { ...newLineup[slotIdx], player_id: null };
-      return newLineup;
+      const next = [...prev];
+      next[slotIdx] = { ...next[slotIdx], player_id: null };
+      return next;
     });
   }
 
@@ -91,7 +91,7 @@ export function LineupView() {
       await updateLineup(team.id, lineup);
       toast({ title: "Formazione salvata!" });
     } catch (err: unknown) {
-      toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore nel salvataggio" });
+      toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });
     } finally {
       setIsSaving(false);
     }
@@ -104,18 +104,20 @@ export function LineupView() {
   );
 
   return (
-    <div className="p-4 lg:p-8 space-y-5 animate-fade-in">
+    <div className="p-4 lg:p-8 space-y-4 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <LayoutGrid className="w-6 h-6 text-stork-orange" />
           <div>
             <h1 className="text-2xl font-black">Il Mio Campo</h1>
-            <p className="text-xs text-muted-foreground">{filledSlots}/{lineupSize} titolari schierati</p>
+            <p className="text-xs text-muted-foreground">
+              {filledSlots}/{lineupSize} titolari · {lineupSize === 1 ? "1 giocatore" : `formazione da ${lineupSize}`}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {locked && <Badge variant="warning" className="gap-1"><Lock className="w-3 h-3" /> Bloccata</Badge>}
+          {locked && <Badge variant="warning" className="gap-1"><Lock className="w-3 h-3" />Bloccata</Badge>}
           <Button onClick={handleSave} disabled={isSaving || locked} size="sm">
             <Save className="w-4 h-4" />
             {isSaving ? "Salvataggio..." : "Salva"}
@@ -129,64 +131,99 @@ export function LineupView() {
           La formazione è bloccata per questa giornata.
         </div>
       )}
-
       {selectedSlot !== null && (
         <div className="bg-stork-orange/10 border border-stork-orange/30 rounded-xl p-3 flex items-center gap-2 text-sm text-stork-orange animate-fade-in">
           <Info className="w-4 h-4 shrink-0" />
-          Seleziona un giocatore dalla lista per inserirlo nella posizione {selectedSlot + 1}. Click sulla posizione per deselezionare.
+          Seleziona un giocatore dalla lista per la posizione {selectedSlot + 1}
+          {pitchSlots[selectedSlot]?.isGoalkeeper ? " (Portiere)" : " (Giocatore di Movimento)"}.
         </div>
       )}
 
       <div className="grid lg:grid-cols-[1fr_260px] gap-5">
-        {/* Pitch */}
+        {/* ===== PITCH ===== */}
         <Card className="overflow-hidden border-emerald-900/30">
           <CardContent className="p-0">
-            <div className="relative w-full overflow-hidden rounded-xl" style={{ paddingBottom: "130%" }}>
-              {/* Grass gradient */}
-              <div className="absolute inset-0 bg-gradient-to-b from-emerald-950 via-emerald-900 to-emerald-950" />
-              {/* Pitch lines */}
+            {/* Aspect ratio dinamico: più giocatori = campo più alto */}
+            <div
+              className="relative w-full overflow-hidden rounded-xl"
+              style={{ paddingBottom: `${Math.max(110, 80 + lineupSize * 3)}%` }}
+            >
+              {/* Erba */}
+              <div className="absolute inset-0 bg-gradient-to-b from-emerald-950 via-emerald-900/90 to-emerald-950" />
+              {/* Strisce del campo */}
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute inset-x-0 bg-emerald-800/20"
+                  style={{ top: `${i * 17}%`, height: "8.5%" }}
+                />
+              ))}
+              {/* Linee campo */}
               <div className="absolute inset-[3%] border-2 border-white/15 rounded-sm" />
               <div className="absolute left-[3%] right-[3%] top-1/2 border-t border-white/10" />
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[15%] h-0 pb-[15%] border-2 border-white/10 rounded-full" />
-              <div className="absolute top-[3%] left-[25%] right-[25%] h-[10%] border-2 border-white/10 border-t-0" />
-              <div className="absolute bottom-[3%] left-[25%] right-[25%] h-[10%] border-2 border-white/10 border-b-0" />
+              <div className="absolute left-1/2 top-1/2 w-16 h-16 -translate-x-1/2 -translate-y-1/2 border-2 border-white/10 rounded-full" />
+              {/* Area rigore alto */}
+              <div className="absolute top-[3%] left-[28%] right-[28%] h-[9%] border-2 border-white/10 border-t-0" />
+              {/* Area rigore basso */}
+              <div className="absolute bottom-[3%] left-[28%] right-[28%] h-[9%] border-2 border-white/10 border-b-0" />
 
-              {/* Player slots */}
-              {pitchPositions.map((pos, i) => {
+              {/* Slot giocatori */}
+              {pitchSlots.map((slot, i) => {
                 const player = getPlayerInSlot(i);
                 const isSelected = selectedSlot === i;
+                const isGK = slot.isGoalkeeper;
+
                 return (
                   <button
                     key={i}
+                    type="button"
                     className={cn(
-                      "absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 transition-all duration-200",
-                      !locked && "cursor-pointer hover:scale-110",
-                      locked && "cursor-default"
+                      "absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 transition-all duration-200 z-10",
+                      !locked ? "cursor-pointer hover:scale-110 hover:z-20" : "cursor-default"
                     )}
-                    style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+                    style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
                     onClick={() => handleSlotClick(i)}
                   >
+                    {/* Cerchio giocatore */}
                     <div className={cn(
-                      "w-11 h-11 rounded-full border-2 flex items-center justify-center text-xs font-black transition-all shadow-lg",
+                      "rounded-full border-2 flex items-center justify-center font-black transition-all shadow-lg",
+                      // Dimensione adattiva: più giocatori = cerchi più piccoli
+                      lineupSize <= 6 ? "w-14 h-14 text-sm" :
+                      lineupSize <= 9 ? "w-12 h-12 text-xs" :
+                      lineupSize <= 12 ? "w-10 h-10 text-xs" : "w-9 h-9 text-[10px]",
+                      // Colore
                       player
-                        ? "bg-gradient-to-br from-stork-orange to-stork-gold-dark border-stork-gold text-black shadow-glow-gold"
-                        : "bg-black/50 text-white/40 border-white/15",
-                      isSelected && "border-stork-gold scale-125 shadow-glow-gold animate-pulse-glow"
+                        ? isGK
+                          ? "bg-gradient-to-br from-stork-gold to-stork-gold-dark border-stork-gold text-black shadow-glow-gold"
+                          : "bg-gradient-to-br from-stork-orange to-stork-gold-dark border-stork-orange text-black shadow-glow-orange"
+                        : isGK
+                          ? "bg-stork-gold/10 border-stork-gold/30 text-stork-gold/60"
+                          : "bg-black/50 border-white/15 text-white/40",
+                      isSelected && "scale-125 ring-2 ring-white/80 ring-offset-1 ring-offset-transparent animate-pulse-glow"
                     )}>
-                      {player ? player.name.slice(0, 2).toUpperCase() : pos.label.slice(0, 1)}
+                      {player
+                        ? player.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
+                        : isGK ? "P" : "+"}
                     </div>
+
+                    {/* Nome giocatore */}
                     {player && (
-                      <div className="bg-black/80 border border-stork-gold/20 rounded-md px-1.5 py-0.5 text-[9px] text-white max-w-[64px] truncate text-center">
+                      <div className={cn(
+                        "bg-black/85 border border-white/10 rounded-md px-1.5 py-0.5 text-white text-center truncate",
+                        lineupSize <= 8 ? "text-[10px] max-w-[72px]" : "text-[9px] max-w-[60px]"
+                      )}>
                         {player.name.split(" ").slice(-1)[0]}
                       </div>
                     )}
+
+                    {/* Bottone rimozione */}
                     {player && !locked && (
                       <div
                         role="button"
                         tabIndex={0}
-                        className="absolute -top-1 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center hover:scale-125 transition-transform shadow cursor-pointer"
-                        onClick={(e) => { e.stopPropagation(); handleRemoveFromSlot(i); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); handleRemoveFromSlot(i); } }}
+                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-400 rounded-full text-white text-[10px] font-bold flex items-center justify-center transition-all hover:scale-125 shadow cursor-pointer z-30"
+                        onClick={(e) => handleRemoveFromSlot(i, e)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleRemoveFromSlot(i, e as unknown as React.MouseEvent); }}
                       >×</div>
                     )}
                   </button>
@@ -196,51 +233,96 @@ export function LineupView() {
           </CardContent>
         </Card>
 
-        {/* Player list */}
+        {/* ===== LISTA GIOCATORI ===== */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground font-medium">
-              {selectedSlot !== null
-                ? <span className="text-stork-orange font-bold">▶ Seleziona giocatore</span>
-                : `La tua rosa (${myPlayers.length})`}
+          <CardHeader className="pb-2 border-b border-stork-dark-border">
+            <CardTitle className="text-sm">
+              {selectedSlot !== null ? (
+                <span className="text-stork-orange font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-stork-orange animate-pulse" />
+                  {pitchSlots[selectedSlot]?.isGoalkeeper ? "Seleziona Portiere" : "Seleziona Giocatore"}
+                </span>
+              ) : (
+                <span className="text-muted-foreground font-medium">La tua rosa ({myPlayers.length})</span>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-2 max-h-[520px] overflow-y-auto space-y-0.5">
             {myPlayers.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Non hai giocatori. Vai al Mercato!</p>
+              <p className="text-sm text-muted-foreground text-center py-8 px-4">
+                Non hai giocatori.<br />Vai al Mercato per acquistarne!
+              </p>
             ) : (
-              myPlayers.map((player) => {
-                const inLineup = playersInLineup.includes(player.id);
-                const isClickable = selectedSlot !== null && !locked;
-                return (
-                  <button
+              <>
+                {/* Portieri */}
+                {myPlayers.filter(p => p.role === "P").length > 0 && (
+                  <div className="px-2 py-1 text-[10px] font-bold text-stork-gold uppercase tracking-wider">Portieri</div>
+                )}
+                {myPlayers.filter(p => p.role === "P").map(player => (
+                  <PlayerListItem
                     key={player.id}
-                    onClick={() => isClickable && handlePlayerSelect(player.id)}
-                    disabled={locked || selectedSlot === null}
-                    className={cn(
-                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all",
-                      isClickable ? "hover:bg-stork-orange/10 cursor-pointer hover:border-stork-orange/30 border border-transparent" : "cursor-default",
-                      inLineup && "bg-stork-dark border border-stork-dark-border"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-7 h-7 rounded-full text-[10px] font-black flex items-center justify-center shrink-0",
-                      inLineup ? "bg-gradient-to-br from-stork-orange to-stork-gold-dark text-black" : "bg-stork-dark text-muted-foreground border border-stork-dark-border"
-                    )}>
-                      {player.role}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold truncate">{player.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{player.team}</p>
-                    </div>
-                    {inLineup && <div className="w-2 h-2 rounded-full bg-stork-orange shrink-0 shadow-glow-orange" />}
-                  </button>
-                );
-              })
+                    player={player}
+                    inLineup={playersInLineup.includes(player.id)}
+                    isClickable={selectedSlot !== null && !locked}
+                    onSelect={handlePlayerSelect}
+                  />
+                ))}
+
+                {/* Giocatori di movimento */}
+                {myPlayers.filter(p => p.role === "M").length > 0 && (
+                  <div className="px-2 py-1 mt-2 text-[10px] font-bold text-stork-orange uppercase tracking-wider">Giocatori di Movimento</div>
+                )}
+                {myPlayers.filter(p => p.role === "M").map(player => (
+                  <PlayerListItem
+                    key={player.id}
+                    player={player}
+                    inLineup={playersInLineup.includes(player.id)}
+                    isClickable={selectedSlot !== null && !locked}
+                    onSelect={handlePlayerSelect}
+                  />
+                ))}
+              </>
             )}
           </CardContent>
         </Card>
       </div>
     </div>
+  );
+}
+
+function PlayerListItem({ player, inLineup, isClickable, onSelect }: {
+  player: Player;
+  inLineup: boolean;
+  isClickable: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const isGK = player.role === "P";
+  return (
+    <button
+      type="button"
+      onClick={() => isClickable && onSelect(player.id)}
+      disabled={!isClickable}
+      className={cn(
+        "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all",
+        isClickable
+          ? "hover:bg-stork-orange/10 hover:border-stork-orange/30 border border-transparent cursor-pointer"
+          : "cursor-default",
+        inLineup && "bg-stork-dark border border-stork-dark-border"
+      )}
+    >
+      <div className={cn(
+        "w-7 h-7 rounded-full text-[10px] font-black flex items-center justify-center shrink-0",
+        isGK
+          ? inLineup ? "bg-gradient-to-br from-stork-gold to-stork-gold-dark text-black" : "bg-stork-gold/10 text-stork-gold border border-stork-gold/30"
+          : inLineup ? "bg-gradient-to-br from-stork-orange to-stork-gold-dark text-black" : "bg-stork-dark text-muted-foreground border border-stork-dark-border"
+      )}>
+        {isGK ? "P" : "M"}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold truncate">{player.name}</p>
+        <p className="text-[10px] text-muted-foreground">{player.team}</p>
+      </div>
+      {inLineup && <div className={cn("w-2 h-2 rounded-full shrink-0", isGK ? "bg-stork-gold shadow-glow-gold" : "bg-stork-orange shadow-glow-orange")} />}
+    </button>
   );
 }

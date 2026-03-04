@@ -21,7 +21,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Player, UserTeam, AppSettings } from "@/types";
 
-type FilterRole = "ALL" | "P" | "D" | "C" | "A";
+type FilterRole = "ALL" | "P" | "M";
 
 export function MarketView() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -141,17 +141,17 @@ export function MarketView() {
           />
         </div>
         <div className="flex gap-1.5">
-          {(["ALL", "P", "D", "C", "A"] as FilterRole[]).map((role) => (
+          {(["ALL", "P", "M"] as FilterRole[]).map((role) => (
             <button
               key={role}
               onClick={() => setFilterRole(role)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 filterRole === role
-                  ? "gradient-stork text-white"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
+                  ? "bg-gradient-to-r from-stork-orange to-stork-gold-dark text-black"
+                  : "bg-stork-dark border border-stork-dark-border text-muted-foreground hover:text-foreground hover:border-stork-orange/30"
               }`}
             >
-              {role === "ALL" ? "Tutti" : PLAYER_ROLE_LABELS[role]}
+              {role === "ALL" ? "Tutti" : role === "P" ? "Portieri" : "Movimento"}
             </button>
           ))}
         </div>

@@ -36,7 +36,7 @@ export function AdminPlayersView() {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<PlayerForm>({
     resolver: zodResolver(playerSchema),
-    defaultValues: { role: "C", price: 15 },
+    defaultValues: { role: "M", price: 15 },
   });
 
   useEffect(() => {
@@ -69,9 +69,7 @@ export function AdminPlayersView() {
 
   const grouped = {
     P: players.filter((p) => p.role === "P"),
-    D: players.filter((p) => p.role === "D"),
-    C: players.filter((p) => p.role === "C"),
-    A: players.filter((p) => p.role === "A"),
+    M: players.filter((p) => p.role === "M"),
   };
 
   return (
@@ -107,7 +105,7 @@ export function AdminPlayersView() {
                 {...register("role")}
                 className="flex h-10 w-full rounded-lg border border-stork-dark-border bg-muted px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stork-orange/50"
               >
-                {(["P", "D", "C", "A"] as PlayerRole[]).map((r) => (
+                {(["P", "M"] as PlayerRole[]).map((r) => (
                   <option key={r} value={r}>{PLAYER_ROLE_LABELS[r]}</option>
                 ))}
               </select>
@@ -134,7 +132,7 @@ export function AdminPlayersView() {
         </div>
       ) : (
         <div className="space-y-4">
-          {(["P", "D", "C", "A"] as PlayerRole[]).map((role) => (
+          {(["P", "M"] as PlayerRole[]).map((role) => (
             <Card key={role}>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm">

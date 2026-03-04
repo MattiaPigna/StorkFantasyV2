@@ -1,6 +1,6 @@
 // ==================== PLAYER TYPES ====================
 
-export type PlayerRole = "P" | "D" | "C" | "A";
+export type PlayerRole = "P" | "M";
 
 export interface Player {
   id: string;
