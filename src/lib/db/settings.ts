@@ -9,7 +9,9 @@ export async function getAppSettings(): Promise<AppSettings | null> {
     .single();
 
   if (error && error.code !== "PGRST116") throw new Error(error.message);
-  return data;
+  if (!data) return null;
+  // Fallback per colonne aggiunte dopo la creazione iniziale
+  return { lineup_size: 11, ...data };
 }
 
 export async function updateAppSettings(updates: Partial<AppSettings>): Promise<void> {

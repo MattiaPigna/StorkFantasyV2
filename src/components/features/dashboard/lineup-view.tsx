@@ -181,10 +181,13 @@ export function LineupView() {
                       </div>
                     )}
                     {player && !locked && (
-                      <button
-                        className="absolute -top-1 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center hover:scale-125 transition-transform shadow"
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className="absolute -top-1 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center hover:scale-125 transition-transform shadow cursor-pointer"
                         onClick={(e) => { e.stopPropagation(); handleRemoveFromSlot(i); }}
-                      >×</button>
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); handleRemoveFromSlot(i); } }}
+                      >×</div>
                     )}
                   </button>
                 );
