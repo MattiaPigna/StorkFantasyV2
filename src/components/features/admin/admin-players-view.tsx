@@ -22,7 +22,7 @@ import type { Player, PlayerRole } from "@/types";
 const playerSchema = z.object({
   name: z.string().min(2, "Minimo 2 caratteri").max(50),
   team: z.string().min(1, "Obbligatorio").max(50),
-  role: z.enum(["P", "D", "C", "A"]),
+  role: z.enum(["P", "M"]),
   price: z.coerce.number().min(1).max(100),
 });
 
