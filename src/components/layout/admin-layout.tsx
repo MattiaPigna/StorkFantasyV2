@@ -105,6 +105,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <main className="flex-1 lg:ml-64 pt-28 lg:pt-0">{children}</main>
-
-
-      
+    </div>
+  );
+}
