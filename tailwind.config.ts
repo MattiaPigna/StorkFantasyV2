@@ -48,6 +48,7 @@ const config: Config = {
       },
       animation: {
         "marquee": "marquee 35s linear infinite",
+        "marquee-sponsors": "marqueeSponsors 22s linear infinite",
         "fade-in": "fadeIn 0.4s ease-out",
         "slide-up": "slideUp 0.4s ease-out",
         "slide-in": "slideIn 0.3s ease-out",
@@ -78,6 +79,10 @@ const config: Config = {
         shimmer: {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
+        },
+        marqueeSponsors: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
         },
       },
       boxShadow: {

@@ -40,8 +40,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex flex-col w-64 border-r border-stork-dark-border bg-stork-dark-card fixed h-full z-20">
+      {/* Sidebar Tablet + Desktop */}
+      <aside className="hidden md:flex flex-col w-64 border-r border-stork-dark-border bg-stork-dark-card fixed h-full z-20">
         {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-5 border-b border-stork-dark-border">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-stork-orange to-stork-gold-dark flex items-center justify-center shadow-glow-orange">
@@ -95,13 +95,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
         {settings?.marquee_text && <MarqueeBanner text={settings.marquee_text} />}
-        <main className="flex-1 pb-20 lg:pb-0">{children}</main>
+        <main className="flex-1 pb-20 md:pb-0">{children}</main>
       </div>
 
-      {/* Bottom nav Mobile */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-stork-dark-card/95 backdrop-blur-md border-t border-stork-dark-border">
+      {/* Bottom nav Mobile only */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-stork-dark-card/95 backdrop-blur-md border-t border-stork-dark-border">
         <div className="flex">
           {navItems.map((item) => {
             const active = pathname === item.href;

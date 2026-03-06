@@ -32,8 +32,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 border-r border-stork-dark-border bg-stork-dark-card fixed h-full z-20">
+      {/* Sidebar Tablet + Desktop */}
+      <aside className="hidden md:flex flex-col w-64 border-r border-stork-dark-border bg-stork-dark-card fixed h-full z-20">
         <div className="flex items-center gap-3 px-5 py-5 border-b border-stork-dark-border">
           <div className="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center">
             <Shield className="w-5 h-5 text-red-400" />
@@ -78,7 +78,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Mobile header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-stork-dark-card/95 backdrop-blur-md border-b border-stork-dark-border z-20 px-4 py-3">
+      <div className="md:hidden fixed top-0 left-0 right-0 bg-stork-dark-card/95 backdrop-blur-md border-b border-stork-dark-border z-20 px-4 py-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-red-400" />
@@ -104,7 +104,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <main className="flex-1 lg:ml-64 pt-28 lg:pt-0">{children}</main>
+      <main className="flex-1 md:ml-64 pt-28 md:pt-0">{children}</main>
     </div>
   );
 }

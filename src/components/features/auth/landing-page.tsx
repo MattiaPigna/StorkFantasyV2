@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Trophy, Users, Zap, Shield } from "lucide-react";
+import { Loader2, Trophy, Users, Zap, Shield, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { getSponsors } from "@/lib/db/settings";
+import type { Sponsor } from "@/types";
+import { SPONSOR_TYPE_LABELS } from "@/lib/constants";
 
 const loginSchema = z.object({
   email: z.string().email("Email non valida"),
@@ -28,9 +31,14 @@ type SignupForm = z.infer<typeof signupSchema>;
 export function LandingPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [isLoading, setIsLoading] = useState(false);
+  const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const { toast } = useToast();
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    getSponsors().then(setSponsors).catch((err) => console.error("Sponsors fetch error:", err));
+  }, []);
 
   const loginForm = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
   const signupForm = useForm<SignupForm>({ resolver: zodResolver(signupSchema) });
@@ -68,15 +76,36 @@ export function LandingPage() {
     }
   }
 
+  const mainSponsors = sponsors.filter((s) => s.type === "main");
+  const otherSponsors = sponsors.filter((s) => s.type !== "main");
+
   return (
     <main className="min-h-screen bg-background flex flex-col overflow-hidden">
+      {/* Sponsor marquee */}
+      {sponsors.length > 0 && (
+        <div className="bg-stork-dark border-b border-stork-dark-border overflow-hidden py-2">
+          <div className="flex whitespace-nowrap w-max animate-marquee-sponsors">
+            {[...sponsors, ...sponsors].map((s, i) => (
+              <span key={i} className="inline-flex items-center gap-2 px-6 text-sm text-muted-foreground">
+                {s.logo_url ? (
+                  <img src={s.logo_url} alt={s.name} className="h-5 w-auto object-contain opacity-80" />
+                ) : (
+                  <span className="text-stork-orange font-semibold">{s.name}</span>
+                )}
+                <span className="text-stork-dark-border">·</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Ambient glow top */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-stork-orange/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-[500px] h-[300px] bg-stork-gold/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="flex-1 flex flex-col lg:flex-row relative z-10">
+      <div className="flex-1 flex flex-col md:flex-row relative z-10">
         {/* Left - Branding */}
-        <div className="flex-1 flex flex-col justify-center px-8 py-16 lg:px-16">
+        <div className="flex-1 flex flex-col justify-center px-6 py-10 md:px-10 lg:px-16">
           <div className="max-w-lg mx-auto lg:mx-0 animate-slide-up">
             {/* Logo */}
             <div className="flex items-center gap-4 mb-10">
@@ -89,7 +118,7 @@ export function LandingPage() {
               </div>
             </div>
 
-            <h2 className="text-4xl lg:text-6xl font-black text-foreground leading-tight mb-4">
+            <h2 className="text-3xl md:text-4xl lg:text-6xl font-black text-foreground leading-tight mb-4">
               La tua lega di<br />
               <span className="text-gradient">fantacalcio</span>
             </h2>
@@ -117,7 +146,7 @@ export function LandingPage() {
         </div>
 
         {/* Right - Auth Form */}
-        <div className="flex items-center justify-center px-6 py-12 lg:px-16 lg:w-[500px]">
+        <div className="flex items-center justify-center px-6 py-8 md:py-12 md:px-8 lg:px-16 md:w-[420px] lg:w-[500px]">
           <Card className="w-full max-w-md border-stork-dark-border animate-fade-in shadow-card">
             <CardHeader className="pb-4">
               {/* Tab switcher */}
@@ -193,6 +222,59 @@ export function LandingPage() {
           </Card>
         </div>
       </div>
+
+      {/* Sponsors section */}
+      {sponsors.length > 0 && (
+        <div className="relative z-10 border-t border-stork-dark-border bg-stork-dark/50 px-8 py-10">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground text-center mb-6">I nostri sponsor</p>
+
+          {mainSponsors.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-4 mb-6">
+              {mainSponsors.map((s) => (
+                <a
+                  key={s.id}
+                  href={s.website_url ?? undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="glass rounded-xl px-6 py-4 flex items-center gap-3 hover:border-stork-orange/40 transition-all group"
+                >
+                  {s.logo_url ? (
+                    <img src={s.logo_url} alt={s.name} className="h-8 w-auto object-contain" />
+                  ) : (
+                    <span className="text-base font-black text-gradient">{s.name}</span>
+                  )}
+                  <span className="text-xs bg-stork-orange/15 text-stork-orange px-2 py-0.5 rounded-full font-semibold">
+                    {SPONSOR_TYPE_LABELS[s.type]}
+                  </span>
+                  {s.website_url && <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
+                </a>
+              ))}
+            </div>
+          )}
+
+          {otherSponsors.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-3">
+              {otherSponsors.map((s) => (
+                <a
+                  key={s.id}
+                  href={s.website_url ?? undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="glass rounded-lg px-4 py-2.5 flex items-center gap-2 hover:border-stork-orange/30 transition-all group"
+                >
+                  {s.logo_url ? (
+                    <img src={s.logo_url} alt={s.name} className="h-5 w-auto object-contain opacity-80" />
+                  ) : (
+                    <span className="text-sm font-semibold text-foreground">{s.name}</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">{SPONSOR_TYPE_LABELS[s.type]}</span>
+                  {s.website_url && <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </main>
   );
 }

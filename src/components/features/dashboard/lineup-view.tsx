@@ -139,7 +139,7 @@ export function LineupView() {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-[1fr_260px] gap-5">
+      <div className="grid md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_260px] gap-5">
         {/* ===== PITCH ===== */}
         <Card className="overflow-hidden border-emerald-900/30">
           <CardContent className="p-0">

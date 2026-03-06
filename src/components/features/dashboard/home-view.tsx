@@ -1,21 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Coins, Users, TrendingUp, Calendar, Tv, Star } from "lucide-react";
+import { Trophy, Coins, Users, TrendingUp, Calendar, Tv, Star, ExternalLink, Building } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { getMyTeam, getProfile } from "@/lib/db/teams";
-import { getAppSettings } from "@/lib/db/settings";
+import { getAppSettings, getSponsors } from "@/lib/db/settings";
 import { getMatchdays } from "@/lib/db/matchdays";
 import { formatPoints, formatCredits } from "@/lib/utils";
-import type { Profile, UserTeam, AppSettings, Matchday } from "@/types";
+import { SPONSOR_TYPE_LABELS } from "@/lib/constants";
+import type { Profile, UserTeam, AppSettings, Matchday, Sponsor } from "@/types";
 
 export function HomeView() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [team, setTeam] = useState<UserTeam | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [lastMatchday, setLastMatchday] = useState<Matchday | null>(null);
+  const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -23,9 +25,15 @@ export function HomeView() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const [prof, set, matchdays] = await Promise.all([getProfile(user.id), getAppSettings(), getMatchdays()]);
+      const [prof, set, matchdays, sps] = await Promise.all([
+        getProfile(user.id),
+        getAppSettings(),
+        getMatchdays(),
+        getSponsors(),
+      ]);
       setProfile(prof);
       setSettings(set);
+      setSponsors(sps);
       const calculated = matchdays.filter((m) => m.status === "calculated");
       if (calculated.length > 0) setLastMatchday(calculated[0]);
       if (prof) setTeam(await getMyTeam(user.id));
@@ -72,7 +80,7 @@ export function HomeView() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard icon={Trophy} label="Punti Totali" value={formatPoints(myPoints)} color="text-stork-orange" bg="bg-stork-orange/10" border="border-stork-orange/20" glow />
         <StatCard icon={Coins} label="Crediti SK" value={formatCredits(myCredits)} color="text-stork-gold" bg="bg-stork-gold/10" border="border-stork-gold/20" />
         <StatCard icon={Users} label="Giocatori" value={`${myPlayersCount}/${settings?.max_players_per_team ?? 15}`} color="text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20" />
@@ -139,6 +147,49 @@ export function HomeView() {
             ))}
           </CardContent>
         </Card>
+      )}
+      {/* Sponsors */}
+      {sponsors.length > 0 && (
+        <div className="pt-4 border-t border-stork-dark-border space-y-4">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground text-center">I nostri Sponsor</p>
+
+          {sponsors.filter((s) => s.type === "main").length > 0 && (
+            <div className="flex flex-wrap justify-center gap-4">
+              {sponsors.filter((s) => s.type === "main").map((s) => (
+                <a
+                  key={s.id}
+                  href={s.website_url ?? undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-5 py-3 rounded-xl hover:bg-stork-dark/60 transition-all group"
+                >
+                  {s.logo_url && <img src={s.logo_url} alt={s.name} className="h-10 w-auto object-contain" />}
+                  <span className="font-bold text-foreground">{s.name}</span>
+                  {s.website_url && <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
+                </a>
+              ))}
+            </div>
+          )}
+
+          {sponsors.filter((s) => s.type !== "main").length > 0 && (
+            <div className="flex flex-wrap justify-center gap-3">
+              {sponsors.filter((s) => s.type !== "main").map((s) => (
+                <a
+                  key={s.id}
+                  href={s.website_url ?? undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-stork-dark/60 transition-all group"
+                >
+                  {s.logo_url && <img src={s.logo_url} alt={s.name} className="h-6 w-auto object-contain" />}
+                  <span className="text-sm font-semibold text-foreground">{s.name}</span>
+                  <span className="text-xs text-muted-foreground">{SPONSOR_TYPE_LABELS[s.type]}</span>
+                  {s.website_url && <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
