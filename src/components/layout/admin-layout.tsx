@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Calendar, Users, Star, CreditCard, Trophy, Building, Settings, LogOut, ArrowLeft, Shield } from "lucide-react";
+import { Calendar, Users, UserCog, Star, CreditCard, Trophy, Building, Settings, LogOut, ArrowLeft, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLeagueStore } from "@/store/league";
 
 const adminNavItems = [
+  { href: "/admin/members", label: "Membri", icon: Users },
   { href: "/admin/matchdays", label: "Giornate", icon: Calendar },
-  { href: "/admin/players", label: "Giocatori", icon: Users },
+  { href: "/admin/players", label: "Giocatori", icon: UserCog },
   { href: "/admin/rules", label: "Regole Punti", icon: Star },
   { href: "/admin/cards", label: "Card Speciali", icon: CreditCard },
   { href: "/admin/tournament", label: "Torneo", icon: Trophy },
@@ -21,6 +23,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
+  const { activeLeague } = useLeagueStore();
 
   async function handleLogout() {
     const supabase = createClient();
@@ -40,7 +43,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           </div>
           <div>
             <p className="font-black text-sm text-foreground">Area Admin</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">StorkLeague</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest truncate max-w-[140px]">{activeLeague?.name ?? "StorkLeague"}</p>
           </div>
         </div>
 

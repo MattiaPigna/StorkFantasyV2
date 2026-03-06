@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Star, Plus, Trash2, TrendingUp, TrendingDown } from "lucide-react";
+import { Star, Plus, Trash2, TrendingUp, TrendingDown, Upload, Loader2 as Loader } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,27 +11,33 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { getFantasyRules, upsertFantasyRule, deleteFantasyRule } from "@/lib/db/settings";
+import { useLeagueStore } from "@/store/league";
 import { DEFAULT_BONUS_RULES, DEFAULT_MALUS_RULES } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import type { RuleEntry } from "@/types";
 
 export function AdminRulesView() {
+  const { activeLeague } = useLeagueStore();
+  const leagueId = activeLeague?.id ?? "";
+
   const [rules, setRules] = useState<RuleEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newPoints, setNewPoints] = useState("");
   const [newType, setNewType] = useState<"bonus" | "malus">("bonus");
   const { toast } = useToast();
 
   useEffect(() => {
-    getFantasyRules().then(setRules).finally(() => setIsLoading(false));
-  }, []);
+    if (!leagueId) return;
+    getFantasyRules(leagueId).then(setRules).finally(() => setIsLoading(false));
+  }, [leagueId]);
 
   async function handleAdd() {
     if (!newLabel.trim() || !newPoints) return;
     const pts = parseFloat(newPoints);
     try {
-      const rule = await upsertFantasyRule({
+      const rule = await upsertFantasyRule(leagueId, {
         key: newLabel.toLowerCase().replace(/\s+/g, "_"),
         label: newLabel.trim(),
         points: newType === "malus" ? -Math.abs(pts) : Math.abs(pts),
@@ -55,10 +61,39 @@ export function AdminRulesView() {
     }
   }
 
+  async function handleJsonImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setIsImporting(true);
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const items: { label: string; points: number; type: "bonus" | "malus" }[] = Array.isArray(json) ? json : [json];
+      const created: RuleEntry[] = [];
+      for (const item of items) {
+        if (!item.label || item.points === undefined || !item.type) continue;
+        const r = await upsertFantasyRule(leagueId, {
+          key: item.label.toLowerCase().replace(/\s+/g, "_"),
+          label: item.label,
+          points: item.type === "malus" ? -Math.abs(item.points) : Math.abs(item.points),
+          type: item.type,
+        });
+        created.push(r);
+      }
+      setRules((prev) => [...prev, ...created]);
+      toast({ title: `${created.length} regole importate!` });
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "Errore importazione", description: err instanceof Error ? err.message : "JSON non valido" });
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
   async function handleLoadDefaults() {
     try {
       const all = [...DEFAULT_BONUS_RULES, ...DEFAULT_MALUS_RULES];
-      const created = await Promise.all(all.map((r) => upsertFantasyRule(r)));
+      const created = await Promise.all(all.map((r) => upsertFantasyRule(leagueId, r)));
       setRules(created);
       toast({ title: "Regole di default caricate!" });
     } catch (err: unknown) {
@@ -76,9 +111,18 @@ export function AdminRulesView() {
           <Star className="w-6 h-6 text-stork-orange" />
           <h1 className="text-2xl font-bold">Regole di Punteggio</h1>
         </div>
-        {rules.length === 0 && (
-          <Button variant="outline" size="sm" onClick={handleLoadDefaults}>Carica Default</Button>
-        )}
+        <div className="flex items-center gap-2">
+          {rules.length === 0 && (
+            <Button variant="outline" size="sm" onClick={handleLoadDefaults}>Carica Default</Button>
+          )}
+          <label className="cursor-pointer">
+            <input type="file" accept=".json" className="hidden" onChange={handleJsonImport} disabled={isImporting} />
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-stork-dark-border bg-muted text-sm font-medium hover:border-stork-orange/40 hover:text-stork-orange transition-all">
+              {isImporting ? <Loader className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              Importa JSON
+            </div>
+          </label>
+        </div>
       </div>
 
       {/* Add rule */}

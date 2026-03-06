@@ -6,9 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getTournamentRules, updateTournamentRules } from "@/lib/db/settings";
+import { useLeagueStore } from "@/store/league";
 import { useToast } from "@/hooks/use-toast";
 
 export function AdminTournamentView() {
+  const { activeLeague } = useLeagueStore();
+  const leagueId = activeLeague?.id ?? "";
+
   const [contentHtml, setContentHtml] = useState("");
   const [pdfUrl, setPdfUrl] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -16,15 +20,16 @@ export function AdminTournamentView() {
   const { toast } = useToast();
 
   useEffect(() => {
-    getTournamentRules().then((r) => {
+    if (!leagueId) return;
+    getTournamentRules(leagueId).then((r) => {
       if (r) { setContentHtml(r.content_html ?? ""); setPdfUrl(r.pdf_url ?? ""); }
     }).finally(() => setIsLoading(false));
-  }, []);
+  }, [leagueId]);
 
   async function handleSave() {
     setIsSaving(true);
     try {
-      await updateTournamentRules({ content_html: contentHtml || null, pdf_url: pdfUrl || null });
+      await updateTournamentRules(leagueId, { content_html: contentHtml || null, pdf_url: pdfUrl || null });
       toast({ title: "Regolamento salvato!" });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });

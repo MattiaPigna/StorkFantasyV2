@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, LayoutGrid, ShoppingCart, Trophy, BookOpen, CreditCard, LogOut, Shield } from "lucide-react";
+import { Home, LayoutGrid, ShoppingCart, Trophy, BookOpen, CreditCard, LogOut, Shield, User, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { MarqueeBanner } from "@/components/features/marquee-banner";
 import { useEffect, useState } from "react";
 import { getAppSettings } from "@/lib/db/settings";
+import { getMyLeagues } from "@/lib/db/leagues";
+import { useLeagueStore } from "@/store/league";
 import type { AppSettings } from "@/types";
 
 const navItems = [
@@ -25,32 +27,98 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { toast } = useToast();
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const { activeLeague, myLeagues, setActiveLeague, setMyLeagues } = useLeagueStore();
+  const [showLeaguePicker, setShowLeaguePicker] = useState(false);
 
   useEffect(() => {
-    getAppSettings().then(setSettings).catch(() => null);
-  }, []);
+    async function init() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Load leagues if not in store
+      if (myLeagues.length === 0) {
+        const leagues = await getMyLeagues(user.id);
+        setMyLeagues(leagues);
+        if (!activeLeague && leagues.length > 0) {
+          setActiveLeague(leagues[0]);
+        } else if (leagues.length === 0) {
+          router.push("/league/setup");
+          return;
+        }
+      }
+
+      // Load settings for active league
+      if (activeLeague) {
+        getAppSettings(activeLeague.id).then(setSettings).catch(() => null);
+      }
+    }
+    init();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLeague?.id]);
 
   async function handleLogout() {
     const supabase = createClient();
     await supabase.auth.signOut();
+    useLeagueStore.getState().reset();
     toast({ title: "Arrivederci!" });
     router.push("/");
     router.refresh();
   }
 
+  const isLeagueOwner = activeLeague && myLeagues.some((l) => l.id === activeLeague.id);
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar Tablet + Desktop */}
       <aside className="hidden md:flex flex-col w-64 border-r border-stork-dark-border bg-stork-dark-card fixed h-full z-20">
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-stork-dark-border">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-stork-orange to-stork-gold-dark flex items-center justify-center shadow-glow-orange">
-            <Trophy className="w-5 h-5 text-black" />
+        {/* Logo + League selector */}
+        <div className="px-5 py-5 border-b border-stork-dark-border">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-stork-orange to-stork-gold-dark flex items-center justify-center shadow-glow-orange shrink-0">
+              <Trophy className="w-5 h-5 text-black" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-black text-sm text-gradient truncate">{activeLeague?.name ?? "StorkLeague"}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Fantacalcio</p>
+            </div>
           </div>
-          <div>
-            <p className="font-black text-sm text-gradient">StorkLeague</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Fantacalcio</p>
-          </div>
+
+          {/* League switcher */}
+          {myLeagues.length > 1 && (
+            <div className="relative">
+              <button
+                onClick={() => setShowLeaguePicker(!showLeaguePicker)}
+                className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-stork-dark border border-stork-dark-border text-xs text-muted-foreground hover:text-foreground transition-all"
+              >
+                <span className="truncate">{activeLeague?.name}</span>
+                <ChevronDown className="w-3 h-3 shrink-0" />
+              </button>
+              {showLeaguePicker && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-stork-dark-card border border-stork-dark-border rounded-xl shadow-card z-50 overflow-hidden">
+                  {myLeagues.map((l) => (
+                    <button
+                      key={l.id}
+                      onClick={() => { setActiveLeague(l); setShowLeaguePicker(false); router.refresh(); }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 text-xs hover:bg-stork-dark transition-all",
+                        activeLeague?.id === l.id && "text-stork-orange font-semibold"
+                      )}
+                    >
+                      {l.name}
+                    </button>
+                  ))}
+                  <Link
+                    href="/league/setup"
+                    className="block px-3 py-2 text-xs text-stork-orange border-t border-stork-dark-border hover:bg-stork-dark transition-all"
+                    onClick={() => setShowLeaguePicker(false)}
+                  >
+                    + Crea / Unisciti
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Nav links */}
@@ -78,12 +146,26 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Bottom */}
         <div className="px-3 pb-4 border-t border-stork-dark-border pt-4 space-y-0.5">
           <Link
-            href="/admin/matchdays"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-stork-gold hover:bg-stork-dark transition-all group"
+            href="/dashboard/profile"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group",
+              pathname === "/dashboard/profile"
+                ? "bg-gradient-to-r from-stork-orange to-stork-gold-dark text-black shadow-glow-orange"
+                : "text-muted-foreground hover:text-foreground hover:bg-stork-dark"
+            )}
           >
-            <Shield className="w-4 h-4 group-hover:text-stork-gold" />
-            Area Admin
+            <User className="w-4 h-4" />
+            Profilo
           </Link>
+          {isLeagueOwner && (
+            <Link
+              href="/admin/matchdays"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-stork-gold hover:bg-stork-dark transition-all group"
+            >
+              <Shield className="w-4 h-4 group-hover:text-stork-gold" />
+              Gestisci Lega
+            </Link>
+          )}
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"

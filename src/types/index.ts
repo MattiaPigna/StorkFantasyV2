@@ -1,3 +1,21 @@
+// ==================== LEAGUE ====================
+
+export interface League {
+  id: string;
+  name: string;
+  owner_id: string;
+  invite_code: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface LeagueMember {
+  id: string;
+  league_id: string;
+  user_id: string;
+  joined_at: string;
+}
+
 // ==================== PLAYER TYPES ====================
 
 export type PlayerRole = "P" | "M";
@@ -23,9 +41,11 @@ export interface PlayerMatchStats {
   own_goals: number;
   yellow_cards: number;
   red_cards: number;
-  penalty_scored: number;
   penalty_missed: number;
   penalty_saved: number;
+  goals_conceded: number;
+  bonus_points: number;
+  malus_points: number;
   fantasy_points: number | null;
 }
 

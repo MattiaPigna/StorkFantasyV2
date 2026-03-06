@@ -12,7 +12,7 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
@@ -25,14 +25,11 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   const pathname = request.nextUrl.pathname;
 
   // Redirect unauthenticated users away from protected routes
-  if (!user && (pathname.startsWith("/dashboard") || pathname.startsWith("/admin"))) {
+  if (!user && (pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/league"))) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
@@ -45,7 +42,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Admin route protection - check admin flag
+  // Admin route protection: league owner OR platform admin
   if (user && pathname.startsWith("/admin")) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -53,7 +50,16 @@ export async function updateSession(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (!profile?.is_admin) {
+    if (profile?.is_admin) return supabaseResponse;
+
+    // Check if user owns at least one league
+    const { count } = await supabase
+      .from("leagues")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", user.id)
+      .eq("is_active", true);
+
+    if (!count || count === 0) {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard/home";
       return NextResponse.redirect(url);

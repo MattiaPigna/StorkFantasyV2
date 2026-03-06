@@ -13,10 +13,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getMatchdays, createMatchday, savePlayerStats, calculateMatchdayResults, deleteMatchday } from "@/lib/db/matchdays";
 import { getPlayers } from "@/lib/db/players";
+import { useLeagueStore } from "@/store/league";
 import { useToast } from "@/hooks/use-toast";
 import type { Matchday, Player, PlayerMatchStats } from "@/types";
 
 export function AdminMatchdaysView() {
+  const { activeLeague } = useLeagueStore();
+  const leagueId = activeLeague?.id ?? "";
+
   const [matchdays, setMatchdays] = useState<Matchday[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -28,19 +32,24 @@ export function AdminMatchdaysView() {
   const { toast } = useToast();
 
   useEffect(() => {
-    Promise.all([getMatchdays(), getPlayers()])
+    if (!leagueId) return;
+    Promise.all([getMatchdays(leagueId), getPlayers(leagueId)])
       .then(([m, p]) => { setMatchdays(m); setPlayers(p); })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [leagueId]);
 
   async function handleCreate() {
-    const num = parseInt(newNumber);
-    if (!newName.trim() || isNaN(num)) {
-      toast({ variant: "destructive", title: "Dati non validi" });
+    if (!leagueId) {
+      toast({ variant: "destructive", title: "Nessuna lega selezionata" });
+      return;
+    }
+    const num = parseInt(newNumber, 10);
+    if (!newName.trim() || !newNumber.trim() || isNaN(num)) {
+      toast({ variant: "destructive", title: "Dati non validi", description: "Inserisci nome e numero giornata" });
       return;
     }
     try {
-      const md = await createMatchday({ name: newName.trim(), number: num });
+      const md = await createMatchday(leagueId, { name: newName.trim(), number: num });
       setMatchdays((prev) => [md, ...prev]);
       setNewName(""); setNewNumber("");
       toast({ title: "Giornata creata!" });
@@ -59,9 +68,11 @@ export function AdminMatchdaysView() {
       own_goals: stats[p.id]?.own_goals ?? 0,
       yellow_cards: stats[p.id]?.yellow_cards ?? 0,
       red_cards: stats[p.id]?.red_cards ?? 0,
-      penalty_scored: stats[p.id]?.penalty_scored ?? 0,
       penalty_missed: stats[p.id]?.penalty_missed ?? 0,
       penalty_saved: stats[p.id]?.penalty_saved ?? 0,
+      goals_conceded: stats[p.id]?.goals_conceded ?? 0,
+      bonus_points: stats[p.id]?.bonus_points ?? 0,
+      malus_points: stats[p.id]?.malus_points ?? 0,
     }));
     try {
       await savePlayerStats(statList);
@@ -198,7 +209,7 @@ export function AdminMatchdaysView() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Eliminare {matchday.name}?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Tutti i dati della giornata saranno eliminati permanentemente. I punteggi già calcolati non verranno rimossi automaticamente.
+                            Tutti i dati della giornata saranno eliminati permanentemente. Se la giornata era già calcolata, i punti verranno rimossi automaticamente da tutti i team.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -227,9 +238,11 @@ export function AdminMatchdaysView() {
                           <th className="text-center py-2 px-2 font-medium">AG</th>
                           <th className="text-center py-2 px-2 font-medium">Gio</th>
                           <th className="text-center py-2 px-2 font-medium">Esp</th>
-                          <th className="text-center py-2 px-2 font-medium">Rig+</th>
                           <th className="text-center py-2 px-2 font-medium">Rig-</th>
                           <th className="text-center py-2 px-2 font-medium">RigP</th>
+                          <th className="text-center py-2 px-2 font-medium">GolSub</th>
+                          <th className="text-center py-2 px-2 font-medium text-emerald-400">Bonus</th>
+                          <th className="text-center py-2 px-2 font-medium text-red-400">Malus</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stork-dark-border">
@@ -239,7 +252,7 @@ export function AdminMatchdaysView() {
                               <p className="font-medium truncate max-w-[120px]">{player.name}</p>
                               <p className="text-xs text-muted-foreground">{player.team}</p>
                             </td>
-                            {(["vote", "goals", "assists", "own_goals", "yellow_cards", "red_cards", "penalty_scored", "penalty_missed", "penalty_saved"] as const).map((field) => (
+                            {(["vote", "goals", "assists", "own_goals", "yellow_cards", "red_cards", "penalty_missed", "penalty_saved", "goals_conceded", "bonus_points", "malus_points"] as const).map((field) => (
                               <td key={field} className="px-1 py-1.5">
                                 <Input
                                   type="number"

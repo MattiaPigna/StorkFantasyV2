@@ -1,11 +1,23 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Player } from "@/types";
 
-export async function getPlayers(): Promise<Player[]> {
+export interface TopScorer {
+  player_id: string;
+  name: string;
+  team: string;
+  role: string;
+  total_points: number;
+  total_goals: number;
+  total_assists: number;
+  matchdays_played: number;
+}
+
+export async function getPlayers(leagueId: string): Promise<Player[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("players")
     .select("*")
+    .eq("league_id", leagueId)
     .eq("is_active", true)
     .order("role")
     .order("name");
@@ -14,11 +26,12 @@ export async function getPlayers(): Promise<Player[]> {
   return data ?? [];
 }
 
-export async function getAllPlayers(): Promise<Player[]> {
+export async function getAllPlayers(leagueId: string): Promise<Player[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("players")
     .select("*")
+    .eq("league_id", leagueId)
     .order("role")
     .order("name");
 
@@ -26,11 +39,11 @@ export async function getAllPlayers(): Promise<Player[]> {
   return data ?? [];
 }
 
-export async function createPlayer(player: Omit<Player, "id" | "created_at">): Promise<Player> {
+export async function createPlayer(leagueId: string, player: Omit<Player, "id" | "created_at">): Promise<Player> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("players")
-    .insert(player)
+    .insert({ ...player, league_id: leagueId })
     .select()
     .single();
 
@@ -59,4 +72,41 @@ export async function deletePlayer(id: string): Promise<void> {
     .eq("id", id);
 
   if (error) throw new Error(error.message);
+}
+
+export async function getTopScorers(leagueId: string): Promise<TopScorer[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("player_match_stats")
+    .select("player_id, fantasy_points, goals, assists, players!inner(name, team, role, league_id)")
+    .eq("players.league_id", leagueId)
+    .not("fantasy_points", "is", null);
+
+  if (error) throw new Error(error.message);
+
+  const map = new Map<string, TopScorer>();
+  for (const row of data ?? []) {
+    const p = row.players as unknown as { name: string; team: string; role: string } | null;
+    if (!p) continue;
+    const existing = map.get(row.player_id);
+    if (existing) {
+      existing.total_points += row.fantasy_points ?? 0;
+      existing.total_goals += row.goals ?? 0;
+      existing.total_assists += row.assists ?? 0;
+      existing.matchdays_played += 1;
+    } else {
+      map.set(row.player_id, {
+        player_id: row.player_id,
+        name: p.name,
+        team: p.team,
+        role: p.role,
+        total_points: row.fantasy_points ?? 0,
+        total_goals: row.goals ?? 0,
+        total_assists: row.assists ?? 0,
+        matchdays_played: 1,
+      });
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.total_points - a.total_points);
 }

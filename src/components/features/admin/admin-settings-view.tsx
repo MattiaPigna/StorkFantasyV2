@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Settings, Save, Loader2, AlertTriangle, Users, LayoutGrid, Coins, Lock, ShoppingCart, Tv, Megaphone } from "lucide-react";
+import { Settings, Save, Loader2, AlertTriangle, Users, LayoutGrid, Coins, Lock, ShoppingCart, Tv, Megaphone, Copy, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +10,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { getAppSettings, updateAppSettings } from "@/lib/db/settings";
+import { deleteLeague } from "@/lib/db/leagues";
+import { useLeagueStore } from "@/store/league";
 import { useToast } from "@/hooks/use-toast";
 import type { AppSettings } from "@/types";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 function Toggle({ value, onChange, label, description }: {
   value: boolean; onChange: (v: boolean) => void; label: string; description?: string;
@@ -61,6 +64,9 @@ function NumberInput({ label, description, value, onChange, min, max, icon: Icon
 }
 
 export function AdminSettingsView() {
+  const { activeLeague } = useLeagueStore();
+  const leagueId = activeLeague?.id ?? "";
+
   const [settings, setSettings] = useState<Partial<AppSettings>>({
     market_open: true,
     lineup_locked: false,
@@ -70,16 +76,19 @@ export function AdminSettingsView() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
-    getAppSettings().then((s) => { if (s) setSettings(s); }).finally(() => setIsLoading(false));
-  }, []);
+    if (!leagueId) return;
+    getAppSettings(leagueId).then((s) => { if (s) setSettings(s); }).finally(() => setIsLoading(false));
+  }, [leagueId]);
 
   async function handleSave() {
     setIsSaving(true);
     try {
-      await updateAppSettings(settings);
+      await updateAppSettings(leagueId, settings);
       toast({ title: "Impostazioni salvate!" });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });
@@ -91,11 +100,29 @@ export function AdminSettingsView() {
   async function handleResetLeague() {
     try {
       const supabase = createClient();
-      const { error } = await supabase.rpc("reset_all_standings");
+      const { error } = await supabase.rpc("reset_league_standings", { p_league_id: leagueId });
       if (error) throw error;
       toast({ title: "Lega resettata!", description: "Tutti i punteggi sono stati azzerati." });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore nel reset" });
+    }
+  }
+
+  function handleCopyCode() {
+    if (!activeLeague?.invite_code) return;
+    navigator.clipboard.writeText(activeLeague.invite_code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleDeleteLeague() {
+    try {
+      await deleteLeague(leagueId);
+      useLeagueStore.getState().reset();
+      toast({ title: "Lega eliminata" });
+      router.push("/league/setup");
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });
     }
   }
 
@@ -120,6 +147,26 @@ export function AdminSettingsView() {
           {isSaving ? "Salvataggio..." : "Salva Tutto"}
         </Button>
       </div>
+
+      {/* Invite code */}
+      {activeLeague?.invite_code && (
+        <Card className="border-stork-orange/20">
+          <CardContent className="p-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Codice Invito Lega</p>
+              <p className="text-2xl font-black tracking-widest text-stork-orange">{activeLeague.invite_code}</p>
+              <p className="text-xs text-muted-foreground mt-1">Condividi questo codice per far entrare i membri</p>
+            </div>
+            <button
+              onClick={handleCopyCode}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-stork-orange/30 bg-stork-orange/10 text-stork-orange text-sm font-medium hover:bg-stork-orange/20 transition-all shrink-0"
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? "Copiato!" : "Copia"}
+            </button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-5">
 
@@ -266,6 +313,26 @@ export function AdminSettingsView() {
                   <AlertDialogCancel>Annulla</AlertDialogCancel>
                   <AlertDialogAction onClick={handleResetLeague} className="bg-destructive hover:bg-destructive/90">
                     Sì, azzera tutto
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">Elimina Lega</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Eliminare la lega &ldquo;{activeLeague?.name}&rdquo;?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Verranno eliminati <strong>tutti i dati</strong>: giocatori, giornate, formazioni, classifica, regole e tutti i membri. Operazione <strong>irreversibile</strong>.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteLeague} className="bg-destructive hover:bg-destructive/90">
+                    Sì, elimina tutto
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

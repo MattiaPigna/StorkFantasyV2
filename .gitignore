@@ -39,3 +39,5 @@ next-env.d.ts
 # capacitor
 /android
 /ios
+.claude/
+.claude/

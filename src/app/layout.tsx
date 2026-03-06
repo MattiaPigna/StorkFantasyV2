@@ -3,8 +3,9 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "@/components/layout/providers";
+import { SwRegister } from "@/components/layout/sw-register";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], display: "swap", preload: false });
 
 export const metadata: Metadata = {
   title: "StorkLeague - Fantacalcio",
@@ -33,6 +34,7 @@ export default function RootLayout({
     <html lang="it" className="dark">
       <body className={inter.className}>
         <Providers>
+          <SwRegister />
           {children}
           <Toaster />
         </Providers>

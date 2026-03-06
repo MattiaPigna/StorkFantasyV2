@@ -1,20 +1,25 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { LayoutGrid, Save, Lock, Info } from "lucide-react";
+import { LayoutGrid, Save, Lock, Info, Target, Zap, AlertTriangle, Flame } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getPlayers } from "@/lib/db/players";
 import { getMyTeam, updateLineup } from "@/lib/db/teams";
 import { getAppSettings } from "@/lib/db/settings";
+import { getMatchdays, getMatchdayStats } from "@/lib/db/matchdays";
+import { useLeagueStore } from "@/store/league";
 import { getPitchPositions } from "@/lib/pitch-positions";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import type { Player, UserTeam, AppSettings, LineupSlot } from "@/types";
+import type { Player, UserTeam, AppSettings, LineupSlot, PlayerMatchStats, Matchday } from "@/types";
 import { cn } from "@/lib/utils";
 
 export function LineupView() {
+  const { activeLeague } = useLeagueStore();
+  const leagueId = activeLeague?.id ?? "";
+
   const [players, setPlayers] = useState<Player[]>([]);
   const [team, setTeam] = useState<UserTeam | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -22,14 +27,22 @@ export function LineupView() {
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeMatchday, setActiveMatchday] = useState<Matchday | null>(null);
+  const [matchdayStats, setMatchdayStats] = useState<Record<string, PlayerMatchStats>>({});
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!leagueId) return;
     async function load() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const [pl, t, s] = await Promise.all([getPlayers(), getMyTeam(user.id), getAppSettings()]);
+      const [pl, t, s, matchdays] = await Promise.all([
+        getPlayers(leagueId),
+        getMyTeam(user.id, leagueId),
+        getAppSettings(leagueId),
+        getMatchdays(leagueId),
+      ]);
       setPlayers(pl);
       setTeam(t);
       setSettings(s);
@@ -39,10 +52,16 @@ export function LineupView() {
       } else {
         setLineup(Array.from({ length: size }, (_, i) => ({ position: i, player_id: null })));
       }
+      if (matchdays.length > 0) {
+        const latest = matchdays[0];
+        setActiveMatchday(latest);
+        const stats = await getMatchdayStats(latest.id);
+        setMatchdayStats(stats);
+      }
       setIsLoading(false);
     }
     load();
-  }, []);
+  }, [leagueId]);
 
   const lineupSize = settings?.lineup_size ?? 11;
   const pitchSlots = getPitchPositions(lineupSize);
@@ -142,14 +161,45 @@ export function LineupView() {
       <div className="grid md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_260px] gap-5">
         {/* ===== PITCH ===== */}
         <Card className="overflow-hidden border-emerald-900/30">
+          {/* Riquadro punteggio live */}
+          {activeMatchday && (() => {
+            const matchdayScore = team?.matchday_points?.[activeMatchday.id] ?? null;
+            const isCalculated = activeMatchday.status === "calculated";
+            return (
+              <div className="flex items-center justify-between px-4 py-3 border-b border-emerald-900/30 bg-gradient-to-r from-emerald-950/80 to-stork-dark">
+                <div className="flex items-center gap-2">
+                  {isCalculated
+                    ? <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    : <span className="w-2 h-2 rounded-full bg-stork-orange animate-pulse" />}
+                  <span className="text-xs font-semibold text-muted-foreground">{activeMatchday.name}</span>
+                  <Badge variant={isCalculated ? "success" : "warning"} className="text-[10px]">
+                    {isCalculated ? "Calcolata" : "In corso"}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Flame className="w-4 h-4 text-stork-orange" />
+                  {matchdayScore !== null ? (
+                    <>
+                      <span className="text-xl font-black text-stork-orange">
+                        {matchdayScore > 0 ? `+${matchdayScore.toFixed(1)}` : matchdayScore.toFixed(1)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">pt</span>
+                    </>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Non calcolata</span>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
           <CardContent className="p-0">
             {/* Aspect ratio dinamico: più giocatori = campo più alto */}
             <div
-              className="relative w-full overflow-hidden rounded-xl"
-              style={{ paddingBottom: `${Math.max(110, 80 + lineupSize * 3)}%` }}
+              className="relative w-full overflow-hidden rounded-b-xl"
+              style={{ paddingBottom: `${Math.max(85, 60 + lineupSize * 3)}%` }}
             >
               {/* Erba */}
-              <div className="absolute inset-0 bg-gradient-to-b from-emerald-950 via-emerald-900/90 to-emerald-950" />
+              <div className="absolute inset-0 bg-gradient-to-b from-emerald-950 via-emerald-900/90 to-emerald-950 rounded-b-xl" />
               {/* Strisce del campo */}
               {Array.from({ length: 6 }).map((_, i) => (
                 <div
@@ -233,59 +283,158 @@ export function LineupView() {
           </CardContent>
         </Card>
 
-        {/* ===== LISTA GIOCATORI ===== */}
-        <Card>
-          <CardHeader className="pb-2 border-b border-stork-dark-border">
-            <CardTitle className="text-sm">
-              {selectedSlot !== null ? (
-                <span className="text-stork-orange font-bold flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-stork-orange animate-pulse" />
-                  {pitchSlots[selectedSlot]?.isGoalkeeper ? "Seleziona Portiere" : "Seleziona Giocatore"}
-                </span>
-              ) : (
-                <span className="text-muted-foreground font-medium">La tua rosa ({myPlayers.length})</span>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-2 max-h-[520px] overflow-y-auto space-y-0.5">
-            {myPlayers.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8 px-4">
-                Non hai giocatori.<br />Vai al Mercato per acquistarne!
-              </p>
-            ) : (
-              <>
-                {/* Portieri */}
-                {myPlayers.filter(p => p.role === "P").length > 0 && (
-                  <div className="px-2 py-1 text-[10px] font-bold text-stork-gold uppercase tracking-wider">Portieri</div>
-                )}
-                {myPlayers.filter(p => p.role === "P").map(player => (
-                  <PlayerListItem
-                    key={player.id}
-                    player={player}
-                    inLineup={playersInLineup.includes(player.id)}
-                    isClickable={selectedSlot !== null && !locked}
-                    onSelect={handlePlayerSelect}
-                  />
-                ))}
-
-                {/* Giocatori di movimento */}
-                {myPlayers.filter(p => p.role === "M").length > 0 && (
-                  <div className="px-2 py-1 mt-2 text-[10px] font-bold text-stork-orange uppercase tracking-wider">Giocatori di Movimento</div>
-                )}
-                {myPlayers.filter(p => p.role === "M").map(player => (
-                  <PlayerListItem
-                    key={player.id}
-                    player={player}
-                    inLineup={playersInLineup.includes(player.id)}
-                    isClickable={selectedSlot !== null && !locked}
-                    onSelect={handlePlayerSelect}
-                  />
-                ))}
-              </>
+        {(locked || (activeMatchday !== null && Object.keys(matchdayStats).length > 0)) ? (
+          /* ===== LIVE STATS PANEL ===== */
+          <div className="space-y-3">
+            {activeMatchday && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-stork-orange/10 border border-stork-orange/30">
+                <span className="w-2 h-2 rounded-full bg-stork-orange animate-pulse" />
+                <span className="text-xs font-semibold text-stork-orange">{activeMatchday.name}</span>
+                {activeMatchday.status === "calculated" && <Badge variant="success" className="text-[10px] ml-auto">Calcolata</Badge>}
+              </div>
             )}
-          </CardContent>
-        </Card>
+
+            {/* I miei titolari */}
+            <Card>
+              <CardHeader className="pb-2 border-b border-stork-dark-border">
+                <CardTitle className="text-sm text-stork-orange">I miei titolari</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 max-h-[280px] overflow-y-auto">
+                {playersInLineup.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-6">Nessun titolare schierato</p>
+                ) : (
+                  playersInLineup.map((pid) => {
+                    const p = players.find((pl) => pl.id === pid);
+                    if (!p) return null;
+                    const s = matchdayStats[p.id];
+                    return <StatsRow key={p.id} player={p} stats={s} highlight />;
+                  })
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Giocatori sul mercato */}
+            <Card>
+              <CardHeader className="pb-2 border-b border-stork-dark-border">
+                <CardTitle className="text-sm text-muted-foreground">Altri giocatori</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 max-h-[280px] overflow-y-auto">
+                {players.filter((p) => !team?.players.includes(p.id)).length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-6">Nessun giocatore</p>
+                ) : (
+                  players.filter((p) => !team?.players.includes(p.id)).map((p) => {
+                    const s = matchdayStats[p.id];
+                    return <StatsRow key={p.id} player={p} stats={s} />;
+                  })
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          /* ===== LISTA GIOCATORI ===== */
+          <Card>
+            <CardHeader className="pb-2 border-b border-stork-dark-border">
+              <CardTitle className="text-sm">
+                {selectedSlot !== null ? (
+                  <span className="text-stork-orange font-bold flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-stork-orange animate-pulse" />
+                    {pitchSlots[selectedSlot]?.isGoalkeeper ? "Seleziona Portiere" : "Seleziona Giocatore"}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground font-medium">La tua rosa ({myPlayers.length})</span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-2 max-h-[520px] overflow-y-auto space-y-0.5">
+              {myPlayers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8 px-4">
+                  Non hai giocatori.<br />Vai al Mercato per acquistarne!
+                </p>
+              ) : (
+                <>
+                  {myPlayers.filter(p => p.role === "P").length > 0 && (
+                    <div className="px-2 py-1 text-[10px] font-bold text-stork-gold uppercase tracking-wider">Portieri</div>
+                  )}
+                  {myPlayers.filter(p => p.role === "P").map(player => (
+                    <PlayerListItem key={player.id} player={player} inLineup={playersInLineup.includes(player.id)} isClickable={selectedSlot !== null && !locked} onSelect={handlePlayerSelect} />
+                  ))}
+                  {myPlayers.filter(p => p.role === "M").length > 0 && (
+                    <div className="px-2 py-1 mt-2 text-[10px] font-bold text-stork-orange uppercase tracking-wider">Giocatori di Movimento</div>
+                  )}
+                  {myPlayers.filter(p => p.role === "M").map(player => (
+                    <PlayerListItem key={player.id} player={player} inLineup={playersInLineup.includes(player.id)} isClickable={selectedSlot !== null && !locked} onSelect={handlePlayerSelect} />
+                  ))}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
+    </div>
+  );
+}
+
+function StatsRow({ player, stats, highlight }: {
+  player: Player;
+  stats?: PlayerMatchStats;
+  highlight?: boolean;
+}) {
+  const hasStats = stats && (
+    stats.vote !== null ||
+    (stats.goals ?? 0) > 0 ||
+    (stats.assists ?? 0) > 0 ||
+    (stats.bonus_points ?? 0) > 0 ||
+    (stats.fantasy_points !== null && stats.fantasy_points !== undefined)
+  );
+  return (
+    <div className={cn(
+      "flex items-center gap-2 px-3 py-2 border-b border-stork-dark-border last:border-0",
+      highlight && "bg-stork-orange/5"
+    )}>
+      <div className={cn(
+        "w-6 h-6 rounded-full text-[9px] font-black flex items-center justify-center shrink-0",
+        player.role === "P" ? "bg-stork-gold/20 text-stork-gold" : "bg-stork-orange/20 text-stork-orange"
+      )}>
+        {player.role}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold truncate">{player.name}</p>
+        <p className="text-[10px] text-muted-foreground">{player.team}</p>
+      </div>
+      {hasStats ? (
+        <div className="flex items-center gap-2 shrink-0">
+          {stats.vote !== null && (
+            <div className={cn("text-xs font-black px-1.5 py-0.5 rounded", stats.vote >= 7 ? "text-emerald-400 bg-emerald-400/10" : stats.vote <= 4 ? "text-red-400 bg-red-400/10" : "text-foreground bg-muted")}>
+              {stats.vote}
+            </div>
+          )}
+          {(stats.goals ?? 0) > 0 && (
+            <span className="flex items-center gap-0.5 text-[10px] text-stork-orange font-bold">
+              <Target className="w-3 h-3" />{stats.goals}
+            </span>
+          )}
+          {(stats.assists ?? 0) > 0 && (
+            <span className="flex items-center gap-0.5 text-[10px] text-blue-400 font-bold">
+              <Zap className="w-3 h-3" />{stats.assists}
+            </span>
+          )}
+          {(stats.yellow_cards ?? 0) > 0 && <AlertTriangle className="w-3 h-3 text-yellow-400" />}
+          {(stats.red_cards ?? 0) > 0 && <AlertTriangle className="w-3 h-3 text-red-400" />}
+          {(stats.bonus_points ?? 0) > 0 && (
+            <span className="text-[10px] text-emerald-400 font-bold">+{stats.bonus_points}B</span>
+          )}
+          {(stats.malus_points ?? 0) > 0 && (
+            <span className="text-[10px] text-red-400 font-bold">-{stats.malus_points}M</span>
+          )}
+          {stats.fantasy_points !== null && stats.fantasy_points !== undefined && (
+            <span className={cn("text-xs font-black ml-1", stats.fantasy_points > 0 ? "text-stork-orange" : "text-muted-foreground")}>
+              {stats.fantasy_points > 0 ? `+${stats.fantasy_points}` : stats.fantasy_points}pt
+            </span>
+          )}
+        </div>
+      ) : (
+        <span className="text-[10px] text-muted-foreground shrink-0">—</span>
+      )}
     </div>
   );
 }

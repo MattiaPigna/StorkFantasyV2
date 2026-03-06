@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Users, Plus, Trash2, Loader2 } from "lucide-react";
+import { Users, Plus, Trash2, Loader2, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { getAllPlayers, createPlayer, deletePlayer } from "@/lib/db/players";
+import { useLeagueStore } from "@/store/league";
 import { PLAYER_ROLE_LABELS, PLAYER_ROLE_COLORS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import type { Player, PlayerRole } from "@/types";
@@ -29,9 +30,13 @@ const playerSchema = z.object({
 type PlayerForm = z.infer<typeof playerSchema>;
 
 export function AdminPlayersView() {
+  const { activeLeague } = useLeagueStore();
+  const leagueId = activeLeague?.id ?? "";
+
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<PlayerForm>({
@@ -40,20 +45,51 @@ export function AdminPlayersView() {
   });
 
   useEffect(() => {
-    getAllPlayers().then(setPlayers).finally(() => setIsLoading(false));
-  }, []);
+    if (!leagueId) return;
+    getAllPlayers(leagueId).then(setPlayers).finally(() => setIsLoading(false));
+  }, [leagueId]);
 
   async function onSubmit(data: PlayerForm) {
     setIsSaving(true);
     try {
-      const newPlayer = await createPlayer({ ...data, is_active: true });
+      const newPlayer = await createPlayer(leagueId, { ...data, is_active: true });
       setPlayers((prev) => [...prev, newPlayer]);
-      reset({ role: "C", price: 15 });
+      reset({ role: "M", price: 15 });
       toast({ title: "Giocatore aggiunto!", description: `${data.name} è stato aggiunto alla rosa.` });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleJsonImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setIsImporting(true);
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const items: { name: string; team: string; role: string; price: number }[] = Array.isArray(json) ? json : [json];
+      const created: Player[] = [];
+      for (const item of items) {
+        if (!item.name || !item.team || !item.role || !item.price) continue;
+        const p = await createPlayer(leagueId, {
+          name: item.name,
+          team: item.team,
+          role: (item.role as PlayerRole),
+          price: Number(item.price),
+          is_active: true,
+        });
+        created.push(p);
+      }
+      setPlayers((prev) => [...prev, ...created]);
+      toast({ title: `${created.length} giocatori importati!` });
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "Errore importazione", description: err instanceof Error ? err.message : "JSON non valido" });
+    } finally {
+      setIsImporting(false);
     }
   }
 
@@ -74,10 +110,19 @@ export function AdminPlayersView() {
 
   return (
     <div className="p-4 lg:p-8 space-y-6 animate-fade-in">
-      <div className="flex items-center gap-3">
-        <Users className="w-6 h-6 text-stork-orange" />
-        <h1 className="text-2xl font-bold">Gestione Giocatori</h1>
-        <Badge variant="secondary">{players.length} totali</Badge>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Users className="w-6 h-6 text-stork-orange" />
+          <h1 className="text-2xl font-bold">Gestione Giocatori</h1>
+          <Badge variant="secondary">{players.length} totali</Badge>
+        </div>
+        <label className="cursor-pointer">
+          <input type="file" accept=".json" className="hidden" onChange={handleJsonImport} disabled={isImporting} />
+          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-stork-dark-border bg-muted text-sm font-medium hover:border-stork-orange/40 hover:text-stork-orange transition-all">
+            {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            Importa JSON
+          </div>
+        </label>
       </div>
 
       {/* Add player form */}

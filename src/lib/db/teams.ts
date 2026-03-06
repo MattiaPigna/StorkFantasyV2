@@ -1,12 +1,13 @@
 import { createClient } from "@/lib/supabase/client";
 import type { UserTeam, StandingEntry, Profile } from "@/types";
 
-export async function getMyTeam(userId: string): Promise<UserTeam | null> {
+export async function getMyTeam(userId: string, leagueId: string): Promise<UserTeam | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("user_teams")
     .select("*")
     .eq("user_id", userId)
+    .eq("league_id", leagueId)
     .single();
 
   if (error && error.code !== "PGRST116") throw new Error(error.message);
@@ -23,11 +24,12 @@ export async function updateLineup(teamId: string, lineup: UserTeam["lineup"]): 
   if (error) throw new Error(error.message);
 }
 
-export async function getStandings(): Promise<StandingEntry[]> {
+export async function getStandings(leagueId: string): Promise<StandingEntry[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("standings_view")
     .select("*")
+    .eq("league_id", leagueId)
     .order("total_points", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -51,6 +53,12 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
   if (error && error.code !== "PGRST116") throw new Error(error.message);
   return data;
+}
+
+export async function updateProfile(userId: string, updates: { team_name?: string; manager_name?: string; avatar_url?: string }): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("profiles").update(updates).eq("id", userId);
+  if (error) throw new Error(error.message);
 }
 
 export async function buyPlayer(
@@ -87,7 +95,7 @@ export async function sellPlayer(
     .from("user_teams")
     .update({
       players: currentPlayers.filter((id) => id !== playerId),
-      credits: currentCredits + Math.floor(price * 0.75), // 75% sell price
+      credits: currentCredits + Math.floor(price * 0.75),
     })
     .eq("id", teamId);
 

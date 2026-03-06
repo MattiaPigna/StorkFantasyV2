@@ -10,18 +10,23 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { getSpecialCards, upsertSpecialCard, deleteSpecialCard } from "@/lib/db/settings";
+import { useLeagueStore } from "@/store/league";
 import { useToast } from "@/hooks/use-toast";
 import type { SpecialCard } from "@/types";
 
 export function AdminCardsView() {
+  const { activeLeague } = useLeagueStore();
+  const leagueId = activeLeague?.id ?? "";
+
   const [cards, setCards] = useState<SpecialCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState({ name: "", description: "", effect: "", image_url: "" });
   const { toast } = useToast();
 
   useEffect(() => {
-    getSpecialCards().then(setCards).finally(() => setIsLoading(false));
-  }, []);
+    if (!leagueId) return;
+    getSpecialCards(leagueId).then(setCards).finally(() => setIsLoading(false));
+  }, [leagueId]);
 
   async function handleAdd() {
     if (!form.name.trim() || !form.description.trim()) {
@@ -29,7 +34,7 @@ export function AdminCardsView() {
       return;
     }
     try {
-      const card = await upsertSpecialCard({
+      const card = await upsertSpecialCard(leagueId, {
         name: form.name.trim(),
         description: form.description.trim(),
         effect: form.effect.trim() || null,

@@ -5,22 +5,27 @@ import { BookOpen, TrendingUp, TrendingDown, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getFantasyRules, getTournamentRules } from "@/lib/db/settings";
+import { useLeagueStore } from "@/store/league";
 import type { RuleEntry, TournamentRules } from "@/types";
 
 export function RulesView() {
+  const { activeLeague } = useLeagueStore();
+  const leagueId = activeLeague?.id ?? "";
+
   const [rules, setRules] = useState<RuleEntry[]>([]);
   const [tournament, setTournament] = useState<TournamentRules | null>(null);
   const [tab, setTab] = useState<"scoring" | "tournament">("scoring");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getFantasyRules(), getTournamentRules()])
+    if (!leagueId) return;
+    Promise.all([getFantasyRules(leagueId), getTournamentRules(leagueId)])
       .then(([r, t]) => {
         setRules(r);
         setTournament(t);
       })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [leagueId]);
 
   const bonuses = rules.filter((r) => r.type === "bonus");
   const maluses = rules.filter((r) => r.type === "malus");

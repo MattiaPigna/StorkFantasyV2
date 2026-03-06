@@ -11,6 +11,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { getAllSponsors, upsertSponsor, deleteSponsor } from "@/lib/db/settings";
+import { useLeagueStore } from "@/store/league";
 import { SPONSOR_TYPE_LABELS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import type { Sponsor } from "@/types";
@@ -18,19 +19,23 @@ import type { Sponsor } from "@/types";
 type SponsorType = "main" | "partner" | "technical";
 
 export function AdminSponsorsView() {
+  const { activeLeague } = useLeagueStore();
+  const leagueId = activeLeague?.id ?? "";
+
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState({ name: "", logo_url: "", website_url: "", type: "partner" as SponsorType });
   const { toast } = useToast();
 
   useEffect(() => {
-    getAllSponsors().then(setSponsors).finally(() => setIsLoading(false));
-  }, []);
+    if (!leagueId) return;
+    getAllSponsors(leagueId).then(setSponsors).finally(() => setIsLoading(false));
+  }, [leagueId]);
 
   async function handleAdd() {
     if (!form.name.trim()) { toast({ variant: "destructive", title: "Il nome è obbligatorio" }); return; }
     try {
-      const sponsor = await upsertSponsor({ ...form, logo_url: form.logo_url || null, website_url: form.website_url || null, is_active: true });
+      const sponsor = await upsertSponsor(leagueId, { ...form, logo_url: form.logo_url || null, website_url: form.website_url || null, is_active: true });
       setSponsors((prev) => [...prev, sponsor]);
       setForm({ name: "", logo_url: "", website_url: "", type: "partner" });
       toast({ title: "Sponsor aggiunto!" });

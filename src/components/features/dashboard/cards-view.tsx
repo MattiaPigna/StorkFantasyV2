@@ -4,16 +4,21 @@ import { useEffect, useState } from "react";
 import { CreditCard, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { getSpecialCards } from "@/lib/db/settings";
+import { useLeagueStore } from "@/store/league";
 import type { SpecialCard } from "@/types";
 import Image from "next/image";
 
 export function CardsView() {
+  const { activeLeague } = useLeagueStore();
+  const leagueId = activeLeague?.id ?? "";
+
   const [cards, setCards] = useState<SpecialCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    getSpecialCards().then(setCards).finally(() => setIsLoading(false));
-  }, []);
+    if (!leagueId) return;
+    getSpecialCards(leagueId).then(setCards).finally(() => setIsLoading(false));
+  }, [leagueId]);
 
   return (
     <div className="p-4 lg:p-8 space-y-5 animate-fade-in">

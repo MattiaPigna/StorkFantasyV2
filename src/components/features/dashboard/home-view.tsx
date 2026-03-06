@@ -8,11 +8,15 @@ import { createClient } from "@/lib/supabase/client";
 import { getMyTeam, getProfile } from "@/lib/db/teams";
 import { getAppSettings, getSponsors } from "@/lib/db/settings";
 import { getMatchdays } from "@/lib/db/matchdays";
+import { useLeagueStore } from "@/store/league";
 import { formatPoints, formatCredits } from "@/lib/utils";
 import { SPONSOR_TYPE_LABELS } from "@/lib/constants";
 import type { Profile, UserTeam, AppSettings, Matchday, Sponsor } from "@/types";
 
 export function HomeView() {
+  const { activeLeague } = useLeagueStore();
+  const leagueId = activeLeague?.id ?? "";
+
   const [profile, setProfile] = useState<Profile | null>(null);
   const [team, setTeam] = useState<UserTeam | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -21,26 +25,27 @@ export function HomeView() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!leagueId) return;
     async function load() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const [prof, set, matchdays, sps] = await Promise.all([
         getProfile(user.id),
-        getAppSettings(),
-        getMatchdays(),
-        getSponsors(),
+        getAppSettings(leagueId),
+        getMatchdays(leagueId),
+        getSponsors(leagueId),
       ]);
       setProfile(prof);
       setSettings(set);
       setSponsors(sps);
       const calculated = matchdays.filter((m) => m.status === "calculated");
       if (calculated.length > 0) setLastMatchday(calculated[0]);
-      if (prof) setTeam(await getMyTeam(user.id));
+      if (prof) setTeam(await getMyTeam(user.id, leagueId));
       setIsLoading(false);
     }
     load();
-  }, []);
+  }, [leagueId]);
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-64">
@@ -55,7 +60,6 @@ export function HomeView() {
 
   return (
     <div className="p-4 lg:p-8 space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-muted-foreground uppercase tracking-wider mb-1">Benvenuto</p>
@@ -79,22 +83,21 @@ export function HomeView() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={Trophy} label="Punti Totali" value={formatPoints(myPoints)} color="text-stork-orange" bg="bg-stork-orange/10" border="border-stork-orange/20" glow />
-        <StatCard icon={Coins} label="Crediti SK" value={formatCredits(myCredits)} color="text-stork-gold" bg="bg-stork-gold/10" border="border-stork-gold/20" />
-        <StatCard icon={Users} label="Giocatori" value={`${myPlayersCount}/${settings?.max_players_per_team ?? 15}`} color="text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20" />
+        <StatCard icon={Trophy} label="Punti Totali" value={formatPoints(myPoints)} color="text-stork-orange" bg="bg-stork-orange/15" border="border-stork-orange/25" accent="from-stork-orange to-stork-gold-dark" glow />
+        <StatCard icon={Coins} label="Crediti SK" value={formatCredits(myCredits)} color="text-yellow-400" bg="bg-yellow-400/15" border="border-yellow-400/25" accent="from-yellow-400 to-yellow-600" />
+        <StatCard icon={Users} label="Giocatori" value={`${myPlayersCount}/${settings?.max_players_per_team ?? 15}`} color="text-blue-400" bg="bg-blue-500/15" border="border-blue-500/25" accent="from-blue-400 to-blue-600" />
         <StatCard
           icon={TrendingUp}
           label="Ultima Giornata"
-          value={lastDayPoints !== null ? `${formatPoints(lastDayPoints)} pt` : "—"}
+          value={lastDayPoints !== null ? `+${formatPoints(lastDayPoints)} pt` : "—"}
           color="text-emerald-400"
-          bg="bg-emerald-500/10"
-          border="border-emerald-500/20"
+          bg="bg-emerald-500/15"
+          border="border-emerald-500/25"
+          accent="from-emerald-400 to-emerald-600"
         />
       </div>
 
-      {/* Last matchday info */}
       {lastMatchday && (
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-stork-dark border border-stork-dark-border">
           <Calendar className="w-4 h-4 text-stork-orange shrink-0" />
@@ -103,7 +106,6 @@ export function HomeView() {
         </div>
       )}
 
-      {/* Live stream */}
       {settings?.youtube_url && (
         <Card className="border-red-500/20 overflow-hidden">
           <CardHeader className="pb-3 bg-gradient-to-r from-red-500/5 to-transparent">
@@ -127,7 +129,6 @@ export function HomeView() {
         </Card>
       )}
 
-      {/* Points history */}
       {team && Object.keys(team.matchday_points ?? {}).length > 0 && (
         <Card>
           <CardHeader className="pb-3">
@@ -148,21 +149,15 @@ export function HomeView() {
           </CardContent>
         </Card>
       )}
-      {/* Sponsors */}
+
       {sponsors.length > 0 && (
         <div className="pt-4 border-t border-stork-dark-border space-y-4">
           <p className="text-xs uppercase tracking-widest text-muted-foreground text-center">I nostri Sponsor</p>
-
           {sponsors.filter((s) => s.type === "main").length > 0 && (
             <div className="flex flex-wrap justify-center gap-4">
               {sponsors.filter((s) => s.type === "main").map((s) => (
-                <a
-                  key={s.id}
-                  href={s.website_url ?? undefined}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 px-5 py-3 rounded-xl hover:bg-stork-dark/60 transition-all group"
-                >
+                <a key={s.id} href={s.website_url ?? undefined} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-5 py-3 rounded-xl hover:bg-stork-dark/60 transition-all group">
                   {s.logo_url && <img src={s.logo_url} alt={s.name} className="h-10 w-auto object-contain" />}
                   <span className="font-bold text-foreground">{s.name}</span>
                   {s.website_url && <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
@@ -170,17 +165,11 @@ export function HomeView() {
               ))}
             </div>
           )}
-
           {sponsors.filter((s) => s.type !== "main").length > 0 && (
             <div className="flex flex-wrap justify-center gap-3">
               {sponsors.filter((s) => s.type !== "main").map((s) => (
-                <a
-                  key={s.id}
-                  href={s.website_url ?? undefined}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-stork-dark/60 transition-all group"
-                >
+                <a key={s.id} href={s.website_url ?? undefined} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-stork-dark/60 transition-all group">
                   {s.logo_url && <img src={s.logo_url} alt={s.name} className="h-6 w-auto object-contain" />}
                   <span className="text-sm font-semibold text-foreground">{s.name}</span>
                   <span className="text-xs text-muted-foreground">{SPONSOR_TYPE_LABELS[s.type]}</span>
@@ -195,18 +184,19 @@ export function HomeView() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, color, bg, border, glow }: {
+function StatCard({ icon: Icon, label, value, color, bg, border, accent, glow }: {
   icon: React.ElementType; label: string; value: string;
-  color: string; bg: string; border: string; glow?: boolean;
+  color: string; bg: string; border: string; accent: string; glow?: boolean;
 }) {
   return (
-    <Card className={`border ${border} hover:shadow-card-hover transition-all duration-300 ${glow ? "hover:shadow-glow-orange" : ""}`}>
-      <CardContent className="p-4">
-        <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mb-3`}>
+    <Card className={`border ${border} overflow-hidden hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-300 ${glow ? "hover:shadow-glow-orange" : ""}`}>
+      <div className={`h-1 w-full bg-gradient-to-r ${accent}`} />
+      <CardContent className="p-4 pt-3">
+        <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center mb-3`}>
           <Icon className={`w-5 h-5 ${color}`} />
         </div>
-        <p className={`text-2xl font-black ${color}`}>{value}</p>
-        <p className="text-xs text-muted-foreground mt-1">{label}</p>
+        <p className={`text-3xl font-black ${color} leading-none`}>{value}</p>
+        <p className="text-xs text-muted-foreground mt-2 font-medium uppercase tracking-wide">{label}</p>
       </CardContent>
     </Card>
   );

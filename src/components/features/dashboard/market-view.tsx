@@ -15,6 +15,7 @@ import { getPlayers } from "@/lib/db/players";
 import { getMyTeam } from "@/lib/db/teams";
 import { buyPlayer, sellPlayer } from "@/lib/db/teams";
 import { getAppSettings } from "@/lib/db/settings";
+import { useLeagueStore } from "@/store/league";
 import { formatCredits } from "@/lib/utils";
 import { PLAYER_ROLE_LABELS, PLAYER_ROLE_COLORS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
@@ -24,6 +25,9 @@ import type { Player, UserTeam, AppSettings } from "@/types";
 type FilterRole = "ALL" | "P" | "M";
 
 export function MarketView() {
+  const { activeLeague } = useLeagueStore();
+  const leagueId = activeLeague?.id ?? "";
+
   const [players, setPlayers] = useState<Player[]>([]);
   const [team, setTeam] = useState<UserTeam | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -35,6 +39,7 @@ export function MarketView() {
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!leagueId) return;
     async function load() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -42,9 +47,9 @@ export function MarketView() {
       setUserId(user.id);
 
       const [pl, t, s] = await Promise.all([
-        getPlayers(),
-        getMyTeam(user.id),
-        getAppSettings(),
+        getPlayers(leagueId),
+        getMyTeam(user.id, leagueId),
+        getAppSettings(leagueId),
       ]);
       setPlayers(pl);
       setTeam(t);
@@ -52,7 +57,7 @@ export function MarketView() {
       setIsLoading(false);
     }
     load();
-  }, []);
+  }, [leagueId]);
 
   const filteredPlayers = useMemo(() => {
     return players.filter((p) => {
