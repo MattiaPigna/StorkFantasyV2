@@ -176,11 +176,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Main */}
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
         {settings?.marquee_text && <MarqueeBanner text={settings.marquee_text} />}
-        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+        <main className="flex-1 pb-24 md:pb-0">{children}</main>
       </div>
 
       {/* Bottom nav Mobile only */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-stork-dark-card/95 backdrop-blur-md border-t border-stork-dark-border">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-stork-dark-card/95 backdrop-blur-md border-t border-stork-dark-border pb-safe" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 12px)" }}>
         <div className="flex overflow-x-auto scrollbar-none">
           {[...navItems, { href: "/dashboard/profile", label: "Profilo", icon: User }].map((item) => {
             const active = pathname === item.href;
@@ -189,11 +189,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex-shrink-0 flex flex-col items-center gap-1 py-2.5 px-3 text-[10px] font-medium transition-all min-w-[60px]",
+                  "flex-shrink-0 flex flex-col items-center gap-1.5 pt-3 pb-1 px-4 text-[11px] font-medium transition-all min-w-[68px]",
                   active ? "text-stork-orange" : "text-muted-foreground"
                 )}
               >
-                <item.icon className={cn("w-5 h-5", active && "drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]")} />
+                <item.icon className={cn("w-6 h-6", active && "drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]")} />
                 <span className="truncate">{item.label}</span>
               </Link>
             );
