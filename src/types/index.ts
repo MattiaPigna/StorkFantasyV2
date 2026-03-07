@@ -99,6 +99,7 @@ export interface RuleEntry {
   label: string;
   points: number;
   type: "bonus" | "malus";
+  category?: "partita" | "spettacolo";
   description?: string;
 }
 

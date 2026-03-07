@@ -28,6 +28,7 @@ export function AdminRulesView() {
   const [newLabel, setNewLabel] = useState("");
   const [newPoints, setNewPoints] = useState("");
   const [newType, setNewType] = useState<"bonus" | "malus">("bonus");
+  const [newCategory, setNewCategory] = useState<"partita" | "spettacolo">("partita");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -44,6 +45,7 @@ export function AdminRulesView() {
         label: newLabel.trim(),
         points: newType === "malus" ? -Math.abs(pts) : Math.abs(pts),
         type: newType,
+        category: newCategory,
       });
       setRules((prev) => [...prev, rule]);
       setNewLabel(""); setNewPoints("");
@@ -200,8 +202,8 @@ export function AdminRulesView() {
           <CardTitle className="text-base flex items-center gap-2"><Plus className="w-4 h-4" /> Nuova Regola</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-3">
-            <div className="flex rounded-lg bg-muted p-0.5">
+          <div className="flex flex-wrap gap-3">
+            <div className="flex rounded-lg bg-muted p-0.5 shrink-0">
               {(["bonus", "malus"] as const).map((t) => (
                 <button key={t} onClick={() => setNewType(t)}
                   className={`px-3 py-1.5 text-sm rounded-md font-medium transition-all ${newType === t ? "bg-card text-foreground shadow" : "text-muted-foreground"}`}>
@@ -209,9 +211,17 @@ export function AdminRulesView() {
                 </button>
               ))}
             </div>
-            <Input placeholder="Nome regola" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} className="flex-1" />
-            <Input type="number" step="0.5" placeholder="Punti" value={newPoints} onChange={(e) => setNewPoints(e.target.value)} className="w-24" />
-            <Button onClick={handleAdd}><Plus className="w-4 h-4" /> Aggiungi</Button>
+            <select
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value as "partita" | "spettacolo")}
+              className="flex h-10 rounded-lg border border-stork-dark-border bg-muted px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stork-orange/50 shrink-0"
+            >
+              <option value="partita">Partita</option>
+              <option value="spettacolo">Spettacolo</option>
+            </select>
+            <Input placeholder="Nome regola" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} className="flex-1 min-w-[160px]" />
+            <Input type="number" step="0.5" placeholder="Punti" value={newPoints} onChange={(e) => setNewPoints(e.target.value)} className="w-24 shrink-0" />
+            <Button onClick={handleAdd} className="shrink-0"><Plus className="w-4 h-4" /> Aggiungi</Button>
           </div>
         </CardContent>
       </Card>
@@ -228,9 +238,16 @@ export function AdminRulesView() {
             </CardHeader>
             <CardContent className="space-y-2">
               {bonuses.map((r) => (
-                <div key={r.id} className="flex items-center justify-between px-3 py-2 bg-muted rounded-lg">
-                  <span className="text-sm">{r.label}</span>
-                  <div className="flex items-center gap-2">
+                <div key={r.id} className="flex items-center justify-between px-3 py-2 bg-muted rounded-lg gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm truncate">{r.label}</span>
+                    {r.category && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${r.category === "spettacolo" ? "bg-purple-500/20 text-purple-300" : "bg-blue-500/20 text-blue-300"}`}>
+                        {r.category}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
                     <Badge variant="success">+{r.points} pt</Badge>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -257,9 +274,16 @@ export function AdminRulesView() {
             </CardHeader>
             <CardContent className="space-y-2">
               {maluses.map((r) => (
-                <div key={r.id} className="flex items-center justify-between px-3 py-2 bg-muted rounded-lg">
-                  <span className="text-sm">{r.label}</span>
-                  <div className="flex items-center gap-2">
+                <div key={r.id} className="flex items-center justify-between px-3 py-2 bg-muted rounded-lg gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm truncate">{r.label}</span>
+                    {r.category && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${r.category === "spettacolo" ? "bg-purple-500/20 text-purple-300" : "bg-blue-500/20 text-blue-300"}`}>
+                        {r.category}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
                     <Badge variant="destructive">{r.points} pt</Badge>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>

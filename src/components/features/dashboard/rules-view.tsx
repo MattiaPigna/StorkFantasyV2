@@ -30,8 +30,10 @@ export function RulesView() {
       .finally(() => setIsLoading(false));
   }, [leagueId]);
 
-  const bonuses = rules.filter((r) => r.type === "bonus");
-  const maluses = rules.filter((r) => r.type === "malus");
+  const bonusPartita = rules.filter((r) => r.type === "bonus" && r.category !== "spettacolo");
+  const bonusSpettacolo = rules.filter((r) => r.type === "bonus" && r.category === "spettacolo");
+  const malusPartita = rules.filter((r) => r.type === "malus" && r.category !== "spettacolo");
+  const malusSpettacolo = rules.filter((r) => r.type === "malus" && r.category === "spettacolo");
 
   return (
     <div className="p-4 lg:p-8 space-y-5 animate-fade-in">
@@ -98,50 +100,96 @@ export function RulesView() {
           </div>
         )
       ) : tab === "scoring" ? (
-        <div className="grid lg:grid-cols-2 gap-5">
-          {/* Bonuses */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <TrendingUp className="w-4 h-4 text-green-400" />
-                Bonus
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 p-4 pt-0">
-              {bonuses.map((rule) => (
-                <div key={rule.id} className="flex items-center justify-between py-2 border-b border-stork-dark-border last:border-0">
-                  <div>
-                    <p className="text-sm font-medium">{rule.label}</p>
-                    {rule.description && <p className="text-xs text-muted-foreground">{rule.description}</p>}
+        <div className="space-y-5">
+          {/* Bonus Partita + Bonus Spettacolo */}
+          <div className="grid lg:grid-cols-2 gap-5">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <TrendingUp className="w-4 h-4 text-green-400" />
+                  Bonus Partita
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 p-4 pt-0">
+                {bonusPartita.map((rule) => (
+                  <div key={rule.id} className="flex items-center justify-between py-2 border-b border-stork-dark-border last:border-0">
+                    <div>
+                      <p className="text-sm font-medium">{rule.label}</p>
+                      {rule.description && <p className="text-xs text-muted-foreground">{rule.description}</p>}
+                    </div>
+                    <Badge variant="success">+{rule.points} pt</Badge>
                   </div>
-                  <Badge variant="success">+{rule.points} pt</Badge>
-                </div>
-              ))}
-              {bonuses.length === 0 && <p className="text-sm text-muted-foreground">Nessun bonus configurato</p>}
-            </CardContent>
-          </Card>
+                ))}
+                {bonusPartita.length === 0 && <p className="text-sm text-muted-foreground">Nessun bonus partita</p>}
+              </CardContent>
+            </Card>
 
-          {/* Maluses */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <TrendingDown className="w-4 h-4 text-red-400" />
-                Malus
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 p-4 pt-0">
-              {maluses.map((rule) => (
-                <div key={rule.id} className="flex items-center justify-between py-2 border-b border-stork-dark-border last:border-0">
-                  <div>
-                    <p className="text-sm font-medium">{rule.label}</p>
-                    {rule.description && <p className="text-xs text-muted-foreground">{rule.description}</p>}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <TrendingUp className="w-4 h-4 text-purple-400" />
+                  Bonus Spettacolo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 p-4 pt-0">
+                {bonusSpettacolo.map((rule) => (
+                  <div key={rule.id} className="flex items-center justify-between py-2 border-b border-stork-dark-border last:border-0">
+                    <div>
+                      <p className="text-sm font-medium">{rule.label}</p>
+                      {rule.description && <p className="text-xs text-muted-foreground">{rule.description}</p>}
+                    </div>
+                    <Badge variant="success">+{rule.points} pt</Badge>
                   </div>
-                  <Badge variant="destructive">{rule.points} pt</Badge>
-                </div>
-              ))}
-              {maluses.length === 0 && <p className="text-sm text-muted-foreground">Nessun malus configurato</p>}
-            </CardContent>
-          </Card>
+                ))}
+                {bonusSpettacolo.length === 0 && <p className="text-sm text-muted-foreground">Nessun bonus spettacolo</p>}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Malus Partita + Malus Spettacolo */}
+          <div className="grid lg:grid-cols-2 gap-5">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <TrendingDown className="w-4 h-4 text-red-400" />
+                  Malus Partita
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 p-4 pt-0">
+                {malusPartita.map((rule) => (
+                  <div key={rule.id} className="flex items-center justify-between py-2 border-b border-stork-dark-border last:border-0">
+                    <div>
+                      <p className="text-sm font-medium">{rule.label}</p>
+                      {rule.description && <p className="text-xs text-muted-foreground">{rule.description}</p>}
+                    </div>
+                    <Badge variant="destructive">{rule.points} pt</Badge>
+                  </div>
+                ))}
+                {malusPartita.length === 0 && <p className="text-sm text-muted-foreground">Nessun malus partita</p>}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <TrendingDown className="w-4 h-4 text-orange-400" />
+                  Malus Spettacolo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 p-4 pt-0">
+                {malusSpettacolo.map((rule) => (
+                  <div key={rule.id} className="flex items-center justify-between py-2 border-b border-stork-dark-border last:border-0">
+                    <div>
+                      <p className="text-sm font-medium">{rule.label}</p>
+                      {rule.description && <p className="text-xs text-muted-foreground">{rule.description}</p>}
+                    </div>
+                    <Badge variant="destructive">{rule.points} pt</Badge>
+                  </div>
+                ))}
+                {malusSpettacolo.length === 0 && <p className="text-sm text-muted-foreground">Nessun malus spettacolo</p>}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       ) : (
         <Card>
