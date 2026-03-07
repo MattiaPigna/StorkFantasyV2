@@ -11,6 +11,7 @@ import { useLeagueStore } from "@/store/league";
 const adminNavItems = [
   { href: "/admin/members", label: "Membri", icon: Users },
   { href: "/admin/matchdays", label: "Giornate", icon: Calendar },
+  { href: "/admin/teams", label: "Squadre", icon: Users },
   { href: "/admin/matches", label: "Partite", icon: Swords },
   { href: "/admin/players", label: "Giocatori", icon: UserCog },
   { href: "/admin/rules", label: "Regole Punti", icon: Star },
