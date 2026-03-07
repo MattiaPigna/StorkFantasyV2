@@ -101,8 +101,8 @@ export function AdminMatchesView() {
     if (away !== null && isNaN(away)) { toast({ variant: "destructive", title: "Valore gol ospite non valido" }); return; }
     setSavingScore(match.id);
     try {
-      const updated = await updateMatchScore(match.id, home, away);
-      setMatches((prev) => prev.map((m) => m.id === match.id ? updated : m));
+      await updateMatchScore(match.id, home, away);
+      setMatches((prev) => prev.map((m) => m.id === match.id ? { ...m, home_score: home, away_score: away } : m));
       toast({ title: "Risultato salvato!" });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });

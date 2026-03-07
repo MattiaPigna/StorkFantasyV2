@@ -39,17 +39,13 @@ export async function createDailyMatch(
   return data;
 }
 
-export async function updateMatchScore(id: string, home_score: number | null, away_score: number | null): Promise<DailyMatch> {
+export async function updateMatchScore(id: string, home_score: number | null, away_score: number | null): Promise<void> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("daily_matches")
     .update({ home_score, away_score })
-    .eq("id", id)
-    .select()
-    .single();
+    .eq("id", id);
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("Aggiornamento non riuscito. Controlla i permessi su daily_matches.");
-  return data;
 }
 
 export async function deleteDailyMatch(id: string): Promise<void> {
