@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Star, Plus, Trash2, TrendingUp, TrendingDown, Upload, Loader2 as Loader } from "lucide-react";
+import { Star, Plus, Trash2, TrendingUp, TrendingDown, Upload, Loader2 as Loader, FileJson, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,8 @@ export function AdminRulesView() {
   const [rules, setRules] = useState<RuleEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
+  const [showJsonPanel, setShowJsonPanel] = useState(false);
+  const [jsonText, setJsonText] = useState("");
   const [newLabel, setNewLabel] = useState("");
   const [newPoints, setNewPoints] = useState("");
   const [newType, setNewType] = useState<"bonus" | "malus">("bonus");
@@ -90,6 +92,34 @@ export function AdminRulesView() {
     }
   }
 
+  async function handlePasteImport() {
+    if (!jsonText.trim()) return;
+    setIsImporting(true);
+    try {
+      const json = JSON.parse(jsonText);
+      const items: { label: string; points: number; type: "bonus" | "malus" }[] = Array.isArray(json) ? json : [json];
+      const created: RuleEntry[] = [];
+      for (const item of items) {
+        if (!item.label || item.points === undefined || !item.type) continue;
+        const r = await upsertFantasyRule(leagueId, {
+          key: item.label.toLowerCase().replace(/\s+/g, "_"),
+          label: item.label,
+          points: item.type === "malus" ? -Math.abs(item.points) : Math.abs(item.points),
+          type: item.type,
+        });
+        created.push(r);
+      }
+      setRules((prev) => [...prev, ...created]);
+      setJsonText("");
+      setShowJsonPanel(false);
+      toast({ title: `${created.length} regole importate!` });
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "JSON non valido" });
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
   async function handleLoadDefaults() {
     try {
       const all = [...DEFAULT_BONUS_RULES, ...DEFAULT_MALUS_RULES];
@@ -115,15 +145,54 @@ export function AdminRulesView() {
           {rules.length === 0 && (
             <Button variant="outline" size="sm" onClick={handleLoadDefaults}>Carica Default</Button>
           )}
+          <button
+            onClick={() => setShowJsonPanel((v) => !v)}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-stork-dark-border bg-muted text-sm font-medium hover:border-stork-orange/40 hover:text-stork-orange transition-all"
+          >
+            <FileJson className="w-4 h-4" />
+            Incolla JSON
+            {showJsonPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
           <label className="cursor-pointer">
             <input type="file" accept=".json" className="hidden" onChange={handleJsonImport} disabled={isImporting} />
             <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-stork-dark-border bg-muted text-sm font-medium hover:border-stork-orange/40 hover:text-stork-orange transition-all">
               {isImporting ? <Loader className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              Importa JSON
+              Importa File
             </div>
           </label>
         </div>
       </div>
+
+      {/* JSON paste panel */}
+      {showJsonPanel && (
+        <Card className="border-stork-orange/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <FileJson className="w-4 h-4 text-stork-orange" /> Importa da JSON
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">Formato atteso — array di oggetti:</p>
+            <pre className="text-xs bg-stork-dark rounded-lg p-3 text-muted-foreground overflow-x-auto">{`[
+  { "label": "Gol", "points": 3, "type": "bonus" },
+  { "label": "Ammonizione", "points": 1, "type": "malus" }
+]`}</pre>
+            <textarea
+              className="w-full h-36 bg-stork-dark border border-stork-dark-border rounded-lg p-3 text-sm text-foreground font-mono resize-none focus:outline-none focus:border-stork-orange/50"
+              placeholder="Incolla il tuo JSON qui..."
+              value={jsonText}
+              onChange={(e) => setJsonText(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setShowJsonPanel(false); setJsonText(""); }}>Annulla</Button>
+              <Button size="sm" onClick={handlePasteImport} disabled={isImporting || !jsonText.trim()}>
+                {isImporting ? <Loader className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                Importa
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Add rule */}
       <Card>

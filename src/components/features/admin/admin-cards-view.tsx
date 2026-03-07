@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreditCard, Plus, Trash2 } from "lucide-react";
+import { CreditCard, Plus, Trash2, Upload, FileJson, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,9 @@ export function AdminCardsView() {
 
   const [cards, setCards] = useState<SpecialCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
+  const [showJsonPanel, setShowJsonPanel] = useState(false);
+  const [jsonText, setJsonText] = useState("");
   const [form, setForm] = useState({ name: "", description: "", effect: "", image_url: "" });
   const { toast } = useToast();
 
@@ -58,12 +61,120 @@ export function AdminCardsView() {
     }
   }
 
+  async function importCards(items: { name: string; description: string; effect?: string; image_url?: string }[]) {
+    const created: SpecialCard[] = [];
+    for (const item of items) {
+      if (!item.name?.trim() || !item.description?.trim()) continue;
+      const card = await upsertSpecialCard(leagueId, {
+        name: item.name.trim(),
+        description: item.description.trim(),
+        effect: item.effect?.trim() || null,
+        image_url: item.image_url?.trim() || null,
+      });
+      created.push(card);
+    }
+    return created;
+  }
+
+  async function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setIsImporting(true);
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const items = Array.isArray(json) ? json : [json];
+      const created = await importCards(items);
+      setCards((prev) => [...prev, ...created]);
+      toast({ title: `${created.length} card importate!` });
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "Errore importazione", description: err instanceof Error ? err.message : "JSON non valido" });
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
+  async function handlePasteImport() {
+    if (!jsonText.trim()) return;
+    setIsImporting(true);
+    try {
+      const json = JSON.parse(jsonText);
+      const items = Array.isArray(json) ? json : [json];
+      const created = await importCards(items);
+      setCards((prev) => [...prev, ...created]);
+      setJsonText("");
+      setShowJsonPanel(false);
+      toast({ title: `${created.length} card importate!` });
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "JSON non valido" });
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
   return (
     <div className="p-4 lg:p-8 space-y-6 animate-fade-in">
-      <div className="flex items-center gap-3">
-        <CreditCard className="w-6 h-6 text-stork-orange" />
-        <h1 className="text-2xl font-bold">Card Speciali</h1>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <CreditCard className="w-6 h-6 text-stork-orange" />
+          <h1 className="text-2xl font-bold">Card Speciali</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowJsonPanel((v) => !v)}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-stork-dark-border bg-muted text-sm font-medium hover:border-stork-orange/40 hover:text-stork-orange transition-all"
+          >
+            <FileJson className="w-4 h-4" />
+            Incolla JSON
+            {showJsonPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+          <label className="cursor-pointer">
+            <input type="file" accept=".json" className="hidden" onChange={handleFileImport} disabled={isImporting} />
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-stork-dark-border bg-muted text-sm font-medium hover:border-stork-orange/40 hover:text-stork-orange transition-all">
+              {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              Importa File
+            </div>
+          </label>
+        </div>
       </div>
+
+      {/* JSON paste panel */}
+      {showJsonPanel && (
+        <Card className="border-stork-orange/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <FileJson className="w-4 h-4 text-stork-orange" /> Importa da JSON
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Formato atteso — array di oggetti:
+            </p>
+            <pre className="text-xs bg-stork-dark rounded-lg p-3 text-muted-foreground overflow-x-auto">{`[
+  {
+    "name": "Capitano",
+    "description": "Raddoppia i punti del capitano",
+    "effect": "x2 punti capitano",
+    "image_url": "https://..."
+  }
+]`}</pre>
+            <textarea
+              className="w-full h-36 bg-stork-dark border border-stork-dark-border rounded-lg p-3 text-sm text-foreground font-mono resize-none focus:outline-none focus:border-stork-orange/50"
+              placeholder="Incolla il tuo JSON qui..."
+              value={jsonText}
+              onChange={(e) => setJsonText(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setShowJsonPanel(false); setJsonText(""); }}>Annulla</Button>
+              <Button size="sm" onClick={handlePasteImport} disabled={isImporting || !jsonText.trim()}>
+                {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                Importa
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="pb-3">
