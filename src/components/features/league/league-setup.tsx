@@ -54,7 +54,7 @@ export function LeagueSetup() {
       setActiveLeague(league);
       setMyLeagues([...myLeagues, league]);
       toast({ title: `Benvenuto in ${league.name}!` });
-      router.push("/dashboard/home");
+      router.push("/league/onboarding");
       router.refresh();
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });

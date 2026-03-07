@@ -33,7 +33,10 @@ export function OnboardingView() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!leagueId) return;
+    if (!leagueId) {
+      router.replace("/league/setup");
+      return;
+    }
     async function load() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
