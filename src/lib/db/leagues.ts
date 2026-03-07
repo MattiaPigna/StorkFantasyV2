@@ -51,9 +51,10 @@ export async function joinLeague(leagueId: string, userId: string): Promise<void
   const supabase = createClient();
   const { error } = await supabase
     .from("league_members")
-    .upsert({ league_id: leagueId, user_id: userId }, { onConflict: "league_id,user_id", ignoreDuplicates: true });
+    .insert({ league_id: leagueId, user_id: userId });
 
-  if (error) throw new Error(error.message);
+  // 23505 = unique_violation — already a member, that's fine
+  if (error && error.code !== "23505") throw new Error(error.message);
 }
 
 export async function isLeagueOwner(leagueId: string, userId: string): Promise<boolean> {
