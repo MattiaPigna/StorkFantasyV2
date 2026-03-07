@@ -84,6 +84,17 @@ export function LineupView() {
 
   function handlePlayerSelect(playerId: string) {
     if (selectedSlot === null || locked) return;
+    const isGKSlot = pitchSlots[selectedSlot]?.isGoalkeeper;
+    const player = players.find((p) => p.id === playerId);
+    if (!player) return;
+    if (isGKSlot && player.role !== "P") {
+      toast({ variant: "destructive", title: "Solo portieri in porta!", description: "Questo slot è riservato al portiere." });
+      return;
+    }
+    if (!isGKSlot && player.role === "P") {
+      toast({ variant: "destructive", title: "Il portiere va in porta!", description: "I portieri possono essere schierati solo nello slot portiere." });
+      return;
+    }
     setLineup((prev) => {
       const next = [...prev];
       const otherIdx = next.findIndex((s) => s.player_id === playerId && s.position !== selectedSlot);
@@ -386,26 +397,23 @@ export function LineupView() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-2 max-h-[520px] overflow-y-auto space-y-0.5">
-              {myPlayers.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8 px-4">
-                  Non hai giocatori.<br />Vai al Mercato per acquistarne!
-                </p>
-              ) : (
-                <>
-                  {myPlayers.filter(p => p.role === "P").length > 0 && (
-                    <div className="px-2 py-1 text-[10px] font-bold text-stork-gold uppercase tracking-wider">Portieri</div>
-                  )}
-                  {myPlayers.filter(p => p.role === "P").map(player => (
-                    <PlayerListItem key={player.id} player={player} inLineup={playersInLineup.includes(player.id)} isClickable onSelect={handlePlayerSelect} />
-                  ))}
-                  {myPlayers.filter(p => p.role === "M").length > 0 && (
-                    <div className="px-2 py-1 mt-2 text-[10px] font-bold text-stork-orange uppercase tracking-wider">Giocatori di Movimento</div>
-                  )}
-                  {myPlayers.filter(p => p.role === "M").map(player => (
-                    <PlayerListItem key={player.id} player={player} inLineup={playersInLineup.includes(player.id)} isClickable onSelect={handlePlayerSelect} />
-                  ))}
-                </>
-              )}
+              {(() => {
+                const isGKSlot = pitchSlots[selectedSlot]?.isGoalkeeper;
+                const eligible = myPlayers.filter(p => isGKSlot ? p.role === "P" : p.role === "M");
+                if (myPlayers.length === 0) return (
+                  <p className="text-sm text-muted-foreground text-center py-8 px-4">
+                    Non hai giocatori.<br />Vai al Mercato per acquistarne!
+                  </p>
+                );
+                if (eligible.length === 0) return (
+                  <p className="text-sm text-muted-foreground text-center py-8 px-4">
+                    {isGKSlot ? "Nessun portiere in rosa" : "Nessun giocatore di movimento in rosa"}
+                  </p>
+                );
+                return eligible.map(player => (
+                  <PlayerListItem key={player.id} player={player} inLineup={playersInLineup.includes(player.id)} isClickable onSelect={handlePlayerSelect} />
+                ));
+              })()}
             </CardContent>
           </Card>
         )}
