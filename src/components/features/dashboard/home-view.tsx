@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { getMyTeam, getProfile } from "@/lib/db/teams";
+import { getPlayers } from "@/lib/db/players";
 import { getAppSettings, getSponsors } from "@/lib/db/settings";
 import { getMatchdays } from "@/lib/db/matchdays";
 import { getDailyMatches, type DailyMatch } from "@/lib/db/matches";
@@ -27,6 +28,7 @@ export function HomeView() {
   const [lastMatchday, setLastMatchday] = useState<Matchday | null>(null);
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<DailyMatch[]>([]);
+  const [myPlayersCount, setMyPlayersCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -48,12 +50,18 @@ export function HomeView() {
       const calculated = matchdays.filter((m) => m.status === "calculated");
       if (calculated.length > 0) setLastMatchday(calculated[0]);
       if (prof) {
-        const t = await getMyTeam(user.id, leagueId);
+        const [t, allPlayers] = await Promise.all([
+          getMyTeam(user.id, leagueId),
+          getPlayers(leagueId),
+        ]);
         if (!prof.is_admin && (!t || (t.players?.length ?? 0) === 0)) {
           router.replace("/league/onboarding");
           return;
         }
         setTeam(t);
+        // Count only players that actually exist in the DB (filter out deleted ones)
+        const existingIds = new Set(allPlayers.map((p) => p.id));
+        setMyPlayersCount((t?.players ?? []).filter((id) => existingIds.has(id)).length);
       }
       // Keep today + future matches (up to 7 days out)
       const now = new Date();
