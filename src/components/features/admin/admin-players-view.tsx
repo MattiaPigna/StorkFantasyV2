@@ -116,7 +116,7 @@ export function AdminPlayersView() {
 
   async function onDelete(player: Player) {
     try {
-      await deletePlayer(player.id);
+      await deletePlayer(player.id, leagueId);
       setPlayers((prev) => prev.filter((p) => p.id !== player.id));
       toast({ title: "Giocatore rimosso", description: `${player.name} è stato disattivato.` });
     } catch (err: unknown) {

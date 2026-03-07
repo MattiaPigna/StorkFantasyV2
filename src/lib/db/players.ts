@@ -64,14 +64,35 @@ export async function updatePlayer(id: string, updates: Partial<Player>): Promis
   return data;
 }
 
-export async function deletePlayer(id: string): Promise<void> {
+export async function deletePlayer(id: string, leagueId: string): Promise<void> {
   const supabase = createClient();
+
+  // 1. Soft-delete the player
   const { error } = await supabase
     .from("players")
     .update({ is_active: false })
     .eq("id", id);
-
   if (error) throw new Error(error.message);
+
+  // 2. Remove from all user_teams in the league
+  const { data: teams } = await supabase
+    .from("user_teams")
+    .select("id, players, lineup")
+    .eq("league_id", leagueId);
+
+  if (!teams) return;
+
+  const affected = teams.filter((t) => (t.players as string[]).includes(id));
+  await Promise.all(
+    affected.map((t) =>
+      supabase.from("user_teams").update({
+        players: (t.players as string[]).filter((pid: string) => pid !== id),
+        lineup: (t.lineup as { position: number; player_id: string | null }[]).map((slot) =>
+          slot.player_id === id ? { ...slot, player_id: null } : slot
+        ),
+      }).eq("id", t.id)
+    )
+  );
 }
 
 export async function getTopScorers(leagueId: string): Promise<TopScorer[]> {
