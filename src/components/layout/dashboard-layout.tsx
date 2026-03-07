@@ -39,14 +39,22 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       // Load leagues if not in store
       if (myLeagues.length === 0) {
-        const leagues = await getMyLeagues(user.id);
-        setMyLeagues(leagues);
-        if (!activeLeague && leagues.length > 0) {
-          setActiveLeague(leagues[0]);
-        } else if (leagues.length === 0) {
-          router.push("/league/setup");
+        try {
+          const leagues = await getMyLeagues(user.id);
+          if (leagues.length > 0) {
+            setMyLeagues(leagues);
+            if (!activeLeague) setActiveLeague(leagues[0]);
+          } else {
+            // Only redirect if the fetch succeeded and genuinely returned empty
+            router.push("/league/setup");
+            return;
+          }
+        } catch {
+          // Network error — don't redirect, user might just be offline
           return;
         }
+      } else if (!activeLeague && myLeagues.length > 0) {
+        setActiveLeague(myLeagues[0]);
       }
 
       // Check admin status
