@@ -37,8 +37,13 @@ export async function updateSession(request: NextRequest) {
 
   // Redirect authenticated users away from landing page
   if (user && pathname === "/") {
+    const { count } = await supabase
+      .from("league_members")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard/home";
+    url.pathname = (count && count > 0) ? "/dashboard/home" : "/league/setup";
     return NextResponse.redirect(url);
   }
 

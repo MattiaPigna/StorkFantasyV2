@@ -27,6 +27,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { toast } = useToast();
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { activeLeague, myLeagues, setActiveLeague, setMyLeagues } = useLeagueStore();
   const [showLeaguePicker, setShowLeaguePicker] = useState(false);
 
@@ -48,6 +49,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Check admin status
+      const { data: profile } = await supabase.from("profiles").select("is_admin").eq("id", user.id).single();
+      setIsAdmin(profile?.is_admin ?? false);
+
       // Load settings for active league
       if (activeLeague) {
         getAppSettings(activeLeague.id).then(setSettings).catch(() => null);
@@ -66,7 +71,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     router.refresh();
   }
 
-  const isLeagueOwner = activeLeague && myLeagues.some((l) => l.id === activeLeague.id);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -108,13 +112,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                       {l.name}
                     </button>
                   ))}
-                  <Link
-                    href="/league/setup"
-                    className="block px-3 py-2 text-xs text-stork-orange border-t border-stork-dark-border hover:bg-stork-dark transition-all"
-                    onClick={() => setShowLeaguePicker(false)}
-                  >
-                    + Crea / Unisciti
-                  </Link>
                 </div>
               )}
             </div>
@@ -157,7 +154,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <User className="w-4 h-4" />
             Profilo
           </Link>
-          {isLeagueOwner && (
+          {isAdmin && (
             <Link
               href="/admin/matchdays"
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-stork-gold hover:bg-stork-dark transition-all group"
