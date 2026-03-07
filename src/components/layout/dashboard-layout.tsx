@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, LayoutGrid, ShoppingCart, Trophy, BookOpen, CreditCard, LogOut, Shield, User, ChevronDown } from "lucide-react";
+import { Home, LayoutGrid, ShoppingCart, Trophy, BookOpen, LogOut, Shield, User, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +20,6 @@ const navItems = [
   { href: "/dashboard/standings", label: "Classifica", icon: Trophy },
   { href: "/dashboard/fixtures", label: "Torneo", icon: Trophy },
   { href: "/dashboard/rules", label: "Regole", icon: BookOpen },
-  { href: "/dashboard/cards", label: "Card", icon: CreditCard },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
