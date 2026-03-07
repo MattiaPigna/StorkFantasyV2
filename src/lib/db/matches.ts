@@ -7,6 +7,8 @@ export interface DailyMatch {
   away_team: string;
   match_datetime: string;
   competition: string;
+  home_score: number | null;
+  away_score: number | null;
   created_at: string;
 }
 
@@ -35,6 +37,15 @@ export async function createDailyMatch(
 
   if (error) throw new Error(error.message);
   return data;
+}
+
+export async function updateMatchScore(id: string, home_score: number | null, away_score: number | null): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("daily_matches")
+    .update({ home_score, away_score })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteDailyMatch(id: string): Promise<void> {
