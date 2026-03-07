@@ -169,6 +169,7 @@ export interface StandingEntry {
   manager_name: string;
   total_points: number;
   user_id: string;
+  matchday_points?: Record<string, number>;
 }
 
 // ==================== API RESPONSES ====================

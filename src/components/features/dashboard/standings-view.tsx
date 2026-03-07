@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Medal, Zap, Target, Star } from "lucide-react";
+import { Trophy, Medal, Zap, Target, Star, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getStandings } from "@/lib/db/teams";
 import { getTopScorers, type TopScorer } from "@/lib/db/players";
+import { getMatchdays } from "@/lib/db/matchdays";
 import { useLeagueStore } from "@/store/league";
 import { formatPoints, getInitials } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ export function StandingsView() {
   const [standings, setStandings] = useState<StandingEntry[]>([]);
   const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
   const [myUserId, setMyUserId] = useState<string | null>(null);
+  const [lastMatchdayId, setLastMatchdayId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -31,9 +33,15 @@ export function StandingsView() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       setMyUserId(user?.id ?? null);
-      const [data, scorers] = await Promise.all([getStandings(leagueId), getTopScorers(leagueId)]);
+      const [data, scorers, matchdays] = await Promise.all([
+        getStandings(leagueId),
+        getTopScorers(leagueId),
+        getMatchdays(leagueId),
+      ]);
       setStandings(data);
       setTopScorers(scorers);
+      const calculated = matchdays.filter((m) => m.status === "calculated");
+      if (calculated.length > 0) setLastMatchdayId(calculated[0].id);
       setIsLoading(false);
     }
     load();
@@ -48,6 +56,18 @@ export function StandingsView() {
   }
 
   const myRank = standings.find((s) => s.user_id === myUserId);
+
+  // Compute previous rank (before last matchday)
+  const prevRankMap = new Map<string, number>();
+  if (lastMatchdayId) {
+    const prevStandings = [...standings]
+      .map((s) => ({
+        user_id: s.user_id,
+        prev_points: s.total_points - (s.matchday_points?.[lastMatchdayId] ?? 0),
+      }))
+      .sort((a, b) => b.prev_points - a.prev_points);
+    prevStandings.forEach((s, i) => prevRankMap.set(s.user_id, i + 1));
+  }
 
   return (
     <div className="p-4 lg:p-8 space-y-6 animate-fade-in">
@@ -104,40 +124,52 @@ export function StandingsView() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-stork-dark-border">
-                {standings.map((entry) => (
-                  <div
-                    key={entry.user_id}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-3 transition-colors",
-                      entry.user_id === myUserId && "bg-stork-orange/5",
-                      entry.rank <= 3 && "bg-muted/30"
-                    )}
-                  >
-                    <div className="w-8 flex items-center justify-center">
-                      {entry.rank === 1 ? (
-                        <Trophy className="w-5 h-5 text-yellow-400" />
-                      ) : entry.rank === 2 ? (
-                        <Medal className="w-5 h-5 text-gray-300" />
-                      ) : entry.rank === 3 ? (
-                        <Medal className="w-5 h-5 text-amber-600" />
-                      ) : (
-                        <span className="text-sm font-medium text-muted-foreground">{entry.rank}</span>
+                {standings.map((entry) => {
+                  const prevRank = prevRankMap.get(entry.user_id);
+                  const delta = prevRank != null ? prevRank - entry.rank : null;
+                  return (
+                    <div
+                      key={entry.user_id}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 transition-colors",
+                        entry.user_id === myUserId && "bg-stork-orange/5",
+                        entry.rank <= 3 && "bg-muted/30"
                       )}
+                    >
+                      <div className="w-8 flex items-center justify-center">
+                        {entry.rank === 1 ? (
+                          <Trophy className="w-5 h-5 text-yellow-400" />
+                        ) : entry.rank === 2 ? (
+                          <Medal className="w-5 h-5 text-gray-300" />
+                        ) : entry.rank === 3 ? (
+                          <Medal className="w-5 h-5 text-amber-600" />
+                        ) : (
+                          <span className="text-sm font-medium text-muted-foreground">{entry.rank}</span>
+                        )}
+                      </div>
+                      <div className="w-9 h-9 rounded-full bg-gradient-stork flex items-center justify-center text-white text-xs font-bold shrink-0">
+                        {getInitials(entry.team_name)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-sm font-semibold truncate", entry.user_id === myUserId && "text-stork-orange")}>
+                          {entry.team_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">{entry.manager_name}</p>
+                      </div>
+                      {delta !== null && (
+                        <div className={cn("flex items-center gap-0.5 text-xs font-bold shrink-0",
+                          delta > 0 ? "text-emerald-400" : delta < 0 ? "text-red-400" : "text-muted-foreground"
+                        )}>
+                          {delta > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : delta < 0 ? <TrendingDown className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
+                          {delta !== 0 && <span>{Math.abs(delta)}</span>}
+                        </div>
+                      )}
+                      <span className={cn("text-sm font-bold", entry.rank <= 3 ? "text-stork-orange" : "text-foreground")}>
+                        {formatPoints(entry.total_points)} pt
+                      </span>
                     </div>
-                    <div className="w-9 h-9 rounded-full bg-gradient-stork flex items-center justify-center text-white text-xs font-bold shrink-0">
-                      {getInitials(entry.team_name)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={cn("text-sm font-semibold truncate", entry.user_id === myUserId && "text-stork-orange")}>
-                        {entry.team_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">{entry.manager_name}</p>
-                    </div>
-                    <span className={cn("text-sm font-bold", entry.rank <= 3 ? "text-stork-orange" : "text-foreground")}>
-                      {formatPoints(entry.total_points)} pt
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
                 {standings.length === 0 && (
                   <div className="text-center py-12 text-muted-foreground">
                     <Trophy className="w-10 h-10 mx-auto mb-2 opacity-30" />

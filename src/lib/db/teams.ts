@@ -26,13 +26,15 @@ export async function updateLineup(teamId: string, lineup: UserTeam["lineup"]): 
 
 export async function getStandings(leagueId: string): Promise<StandingEntry[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("standings_view")
-    .select("*")
-    .eq("league_id", leagueId)
-    .order("total_points", { ascending: false });
+  const [{ data, error }, { data: teams }] = await Promise.all([
+    supabase.from("standings_view").select("*").eq("league_id", leagueId).order("total_points", { ascending: false }),
+    supabase.from("user_teams").select("user_id, matchday_points").eq("league_id", leagueId),
+  ]);
 
   if (error) throw new Error(error.message);
+
+  const pointsMap: Record<string, Record<string, number>> = {};
+  for (const t of teams ?? []) pointsMap[t.user_id] = t.matchday_points ?? {};
 
   return (data ?? []).map((row, index) => ({
     rank: index + 1,
@@ -40,6 +42,7 @@ export async function getStandings(leagueId: string): Promise<StandingEntry[]> {
     manager_name: row.manager_name,
     total_points: row.total_points,
     user_id: row.user_id,
+    matchday_points: pointsMap[row.user_id] ?? {},
   }));
 }
 

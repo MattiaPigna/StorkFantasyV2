@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { ShoppingCart, Search, Filter, Coins, Check, X } from "lucide-react";
+import { ShoppingCart, Search, Filter, Coins, Check, X, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Player, UserTeam, AppSettings } from "@/types";
 
 type FilterRole = "ALL" | "P" | "M";
+type SortPrice = "none" | "asc" | "desc";
 
 export function MarketView() {
   const { activeLeague } = useLeagueStore();
@@ -34,6 +35,8 @@ export function MarketView() {
   const [userId, setUserId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState<FilterRole>("ALL");
+  const [filterTeam, setFilterTeam] = useState<string>("ALL");
+  const [sortPrice, setSortPrice] = useState<SortPrice>("none");
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const { toast } = useToast();
@@ -59,15 +62,24 @@ export function MarketView() {
     load();
   }, [leagueId]);
 
+  const teams = useMemo(() => {
+    const unique = Array.from(new Set(players.map((p) => p.team))).sort();
+    return unique;
+  }, [players]);
+
   const filteredPlayers = useMemo(() => {
-    return players.filter((p) => {
+    let result = players.filter((p) => {
       const matchesSearch =
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.team.toLowerCase().includes(search.toLowerCase());
       const matchesRole = filterRole === "ALL" || p.role === filterRole;
-      return matchesSearch && matchesRole;
+      const matchesTeam = filterTeam === "ALL" || p.team === filterTeam;
+      return matchesSearch && matchesRole && matchesTeam;
     });
-  }, [players, search, filterRole]);
+    if (sortPrice === "asc") result = [...result].sort((a, b) => a.price - b.price);
+    if (sortPrice === "desc") result = [...result].sort((a, b) => b.price - a.price);
+    return result;
+  }, [players, search, filterRole, filterTeam, sortPrice]);
 
   async function handleBuy(player: Player) {
     if (!team || !userId) return;
@@ -135,30 +147,69 @@ export function MarketView() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Cerca giocatore o squadra..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Cerca giocatore o squadra..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            {(["ALL", "P", "M"] as FilterRole[]).map((role) => (
+              <button
+                key={role}
+                onClick={() => setFilterRole(role)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  filterRole === role
+                    ? "bg-gradient-to-r from-stork-orange to-stork-gold-dark text-black"
+                    : "bg-stork-dark border border-stork-dark-border text-muted-foreground hover:text-foreground hover:border-stork-orange/30"
+                }`}
+              >
+                {role === "ALL" ? "Tutti" : role === "P" ? "Portieri" : "Movimento"}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-1.5">
-          {(["ALL", "P", "M"] as FilterRole[]).map((role) => (
-            <button
-              key={role}
-              onClick={() => setFilterRole(role)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                filterRole === role
-                  ? "bg-gradient-to-r from-stork-orange to-stork-gold-dark text-black"
-                  : "bg-stork-dark border border-stork-dark-border text-muted-foreground hover:text-foreground hover:border-stork-orange/30"
-              }`}
+
+        <div className="flex gap-3 flex-wrap items-center">
+          {/* Team filter */}
+          <div className="flex items-center gap-2">
+            <select
+              value={filterTeam}
+              onChange={(e) => setFilterTeam(e.target.value)}
+              className="bg-stork-dark border border-stork-dark-border text-sm text-foreground rounded-lg px-3 py-1.5 outline-none focus:border-stork-orange/50 cursor-pointer"
             >
-              {role === "ALL" ? "Tutti" : role === "P" ? "Portieri" : "Movimento"}
-            </button>
-          ))}
+              <option value="ALL">Tutte le squadre</option>
+              {teams.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Price sort */}
+          <div className="flex gap-1.5">
+            {([
+              { key: "none", label: "Prezzo", icon: ArrowUpDown },
+              { key: "asc",  label: "↑ Prezzo", icon: ArrowUp },
+              { key: "desc", label: "↓ Prezzo", icon: ArrowDown },
+            ] as { key: SortPrice; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setSortPrice(key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  sortPrice === key
+                    ? "bg-gradient-to-r from-stork-orange to-stork-gold-dark text-black"
+                    : "bg-stork-dark border border-stork-dark-border text-muted-foreground hover:text-foreground hover:border-stork-orange/30"
+                }`}
+              >
+                <Icon className="w-3 h-3" />{label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

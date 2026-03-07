@@ -158,7 +158,7 @@ export function LineupView() {
         </div>
       )}
 
-      <div className="grid md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_260px] gap-5">
+      <div className="grid md:grid-cols-[320px_1fr] lg:grid-cols-[360px_1fr] gap-5">
         {/* ===== PITCH ===== */}
         <Card className="overflow-hidden border-emerald-900/30">
           {/* Riquadro punteggio live */}
@@ -193,10 +193,10 @@ export function LineupView() {
             );
           })()}
           <CardContent className="p-0">
-            {/* Aspect ratio dinamico: più giocatori = campo più alto */}
+            {/* Aspect ratio ridotto ~50%: campo più compatto */}
             <div
               className="relative w-full overflow-hidden rounded-b-xl"
-              style={{ paddingBottom: `${Math.max(85, 60 + lineupSize * 3)}%` }}
+              style={{ paddingBottom: `${Math.max(110, 80 + lineupSize * 4)}%` }}
             >
               {/* Erba */}
               <div className="absolute inset-0 bg-gradient-to-b from-emerald-950 via-emerald-900/90 to-emerald-950 rounded-b-xl" />
@@ -222,59 +222,149 @@ export function LineupView() {
                 const player = getPlayerInSlot(i);
                 const isSelected = selectedSlot === i;
                 const isGK = slot.isGoalkeeper;
+                const stats = player ? matchdayStats[player.id] : undefined;
+                const hasPoints = stats?.fantasy_points != null;
+
+                // Card dimensions: adapt to lineup size
+                const cardW = lineupSize <= 8 ? 52 : lineupSize <= 11 ? 46 : 40;
+                const cardH = Math.round(cardW * 1.35);
+                const avatarH = Math.round(cardH * 0.65);
+                const fontSize = lineupSize <= 8 ? 9 : 8;
 
                 return (
                   <button
                     key={i}
                     type="button"
                     className={cn(
-                      "absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 transition-all duration-200 z-10",
+                      "absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-200 z-10",
                       !locked ? "cursor-pointer hover:scale-110 hover:z-20" : "cursor-default"
                     )}
                     style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
                     onClick={() => handleSlotClick(i)}
                   >
-                    {/* Cerchio giocatore */}
-                    <div className={cn(
-                      "rounded-full border-2 flex items-center justify-center font-black transition-all shadow-lg",
-                      // Dimensione adattiva: più giocatori = cerchi più piccoli
-                      lineupSize <= 6 ? "w-14 h-14 text-sm" :
-                      lineupSize <= 9 ? "w-12 h-12 text-xs" :
-                      lineupSize <= 12 ? "w-10 h-10 text-xs" : "w-9 h-9 text-[10px]",
-                      // Colore
-                      player
-                        ? isGK
-                          ? "bg-gradient-to-br from-stork-gold to-stork-gold-dark border-stork-gold text-black shadow-glow-gold"
-                          : "bg-gradient-to-br from-stork-orange to-stork-gold-dark border-stork-orange text-black shadow-glow-orange"
-                        : isGK
-                          ? "bg-stork-gold/10 border-stork-gold/30 text-stork-gold/60"
-                          : "bg-black/50 border-white/15 text-white/40",
-                      isSelected && "scale-125 ring-2 ring-white/80 ring-offset-1 ring-offset-transparent animate-pulse-glow"
-                    )}>
-                      {player
-                        ? player.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
-                        : isGK ? "P" : "+"}
-                    </div>
-
-                    {/* Nome giocatore */}
-                    {player && (
-                      <div className={cn(
-                        "bg-black/85 border border-white/10 rounded-md px-1.5 py-0.5 text-white text-center truncate",
-                        lineupSize <= 8 ? "text-[10px] max-w-[72px]" : "text-[9px] max-w-[60px]"
-                      )}>
-                        {player.name.split(" ").slice(-1)[0]}
+                    {player ? (
+                      /* ── Filled card ── */
+                      <div style={{ position: "relative", width: cardW, filter: isSelected ? "drop-shadow(0 0 6px rgba(255,255,255,0.8))" : undefined }}>
+                        {/* Card body */}
+                        <div style={{
+                          width: cardW, height: cardH,
+                          borderRadius: 6,
+                          overflow: "hidden",
+                          boxShadow: isGK
+                            ? "0 4px 12px rgba(217,119,6,0.5)"
+                            : "0 4px 12px rgba(249,115,22,0.5)",
+                          border: isSelected ? "2px solid rgba(255,255,255,0.9)" : `1.5px solid ${isGK ? "rgba(217,119,6,0.6)" : "rgba(249,115,22,0.6)"}`,
+                        }}>
+                          {/* Avatar area with silhouette */}
+                          <div style={{
+                            height: avatarH,
+                            background: isGK
+                              ? "linear-gradient(160deg, #92400e 0%, #d97706 100%)"
+                              : "linear-gradient(160deg, #9a3412 0%, #f97316 100%)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            position: "relative", overflow: "hidden",
+                          }}>
+                            {/* Background hex pattern */}
+                            <div style={{
+                              position: "absolute", inset: 0, opacity: 0.12,
+                              backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
+                              backgroundSize: "6px 6px",
+                            }} />
+                            {/* Player silhouette SVG */}
+                            <svg
+                              viewBox="0 0 40 56"
+                              style={{ width: cardW * 0.72, height: avatarH * 0.9 }}
+                              fill="white"
+                            >
+                              {/* Head */}
+                              <circle cx="20" cy="8" r="6" opacity="0.95" />
+                              {/* Torso */}
+                              <path d="M12 16 C12 16 20 20 28 16 L30 34 H10 Z" opacity="0.9" />
+                              {/* Left leg */}
+                              <path d="M13 33 L11 50" stroke="white" strokeWidth="4.5" strokeLinecap="round" fill="none" opacity="0.9" />
+                              {/* Right leg */}
+                              <path d="M27 33 L29 50" stroke="white" strokeWidth="4.5" strokeLinecap="round" fill="none" opacity="0.9" />
+                              {/* Left arm */}
+                              <path d="M12 18 L5 30" stroke="white" strokeWidth="3.5" strokeLinecap="round" fill="none" opacity="0.85" />
+                              {/* Right arm */}
+                              <path d="M28 18 L35 30" stroke="white" strokeWidth="3.5" strokeLinecap="round" fill="none" opacity="0.85" />
+                            </svg>
+                            {/* Role badge top-left */}
+                            <div style={{
+                              position: "absolute", top: 2, left: 3,
+                              fontSize: 7, fontWeight: 800, color: "rgba(0,0,0,0.7)",
+                              background: "rgba(255,255,255,0.85)", borderRadius: 3,
+                              padding: "1px 3px", lineHeight: 1.2,
+                            }}>
+                              {isGK ? "P" : "M"}
+                            </div>
+                            {/* Points badge top-right */}
+                            {hasPoints && (
+                              <div style={{
+                                position: "absolute", top: 2, right: 3,
+                                fontSize: 7, fontWeight: 800,
+                                color: (stats!.fantasy_points ?? 0) >= 0 ? "#fff" : "#fca5a5",
+                                background: (stats!.fantasy_points ?? 0) >= 0 ? "rgba(0,0,0,0.55)" : "rgba(220,38,38,0.5)",
+                                borderRadius: 3, padding: "1px 3px", lineHeight: 1.2,
+                              }}>
+                                {(stats!.fantasy_points ?? 0) > 0 ? `+${stats!.fantasy_points}` : stats!.fantasy_points}
+                              </div>
+                            )}
+                          </div>
+                          {/* Name strip */}
+                          <div style={{
+                            height: cardH - avatarH,
+                            background: "rgba(0,0,0,0.92)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            padding: "0 3px",
+                          }}>
+                            <span style={{
+                              fontSize, fontWeight: 800, color: "#fff",
+                              letterSpacing: "0.02em", textTransform: "uppercase",
+                              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                              maxWidth: cardW - 6,
+                            }}>
+                              {player.name.split(" ").slice(-1)[0]}
+                            </span>
+                          </div>
+                        </div>
+                        {/* Remove button */}
+                        {!locked && (
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 hover:bg-red-400 rounded-full text-white text-[10px] font-bold flex items-center justify-center transition-all hover:scale-125 shadow cursor-pointer z-30"
+                            onClick={(e) => handleRemoveFromSlot(i, e)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleRemoveFromSlot(i, e as unknown as React.MouseEvent); }}
+                          >×</div>
+                        )}
                       </div>
-                    )}
-
-                    {/* Bottone rimozione */}
-                    {player && !locked && (
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-400 rounded-full text-white text-[10px] font-bold flex items-center justify-center transition-all hover:scale-125 shadow cursor-pointer z-30"
-                        onClick={(e) => handleRemoveFromSlot(i, e)}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleRemoveFromSlot(i, e as unknown as React.MouseEvent); }}
-                      >×</div>
+                    ) : (
+                      /* ── Empty slot ── */
+                      <div style={{
+                        width: cardW, height: cardH,
+                        borderRadius: 6,
+                        border: isSelected
+                          ? "2px solid rgba(255,255,255,0.8)"
+                          : `1.5px dashed ${isGK ? "rgba(217,119,6,0.4)" : "rgba(255,255,255,0.2)"}`,
+                        background: isSelected
+                          ? "rgba(255,255,255,0.1)"
+                          : isGK ? "rgba(217,119,6,0.06)" : "rgba(0,0,0,0.3)",
+                        display: "flex", flexDirection: "column",
+                        alignItems: "center", justifyContent: "center", gap: 2,
+                        boxShadow: isSelected ? "0 0 12px rgba(255,255,255,0.3)" : undefined,
+                      }}>
+                        <span style={{
+                          fontSize: cardW <= 40 ? 14 : 18,
+                          color: isGK ? "rgba(217,119,6,0.5)" : "rgba(255,255,255,0.3)",
+                          fontWeight: 300, lineHeight: 1,
+                        }}>+</span>
+                        <span style={{
+                          fontSize: 7, fontWeight: 700,
+                          color: isGK ? "rgba(217,119,6,0.5)" : "rgba(255,255,255,0.25)",
+                          textTransform: "uppercase", letterSpacing: "0.05em",
+                        }}>{isGK ? "POR" : "MV"}</span>
+                      </div>
                     )}
                   </button>
                 );
