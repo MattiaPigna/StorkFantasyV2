@@ -49,7 +49,7 @@ export function HomeView() {
       if (calculated.length > 0) setLastMatchday(calculated[0]);
       if (prof) {
         const t = await getMyTeam(user.id, leagueId);
-        if (!t || (t.players?.length ?? 0) === 0) {
+        if (!prof.is_admin && (!t || (t.players?.length ?? 0) === 0)) {
           router.replace("/league/onboarding");
           return;
         }
