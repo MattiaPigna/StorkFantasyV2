@@ -419,7 +419,7 @@ export function FixturesView() {
                         <th className="text-center py-3 px-2 text-xs text-red-400 font-semibold hidden sm:table-cell">S</th>
                         <th className="text-center py-3 px-2 text-xs text-muted-foreground font-semibold">GF</th>
                         <th className="text-center py-3 px-2 text-xs text-muted-foreground font-semibold">GS</th>
-                        <th className="text-center py-3 px-2 text-xs text-muted-foreground font-semibold hidden sm:table-cell">DR</th>
+                        <th className="text-center py-3 px-2 text-xs text-muted-foreground font-semibold">DR</th>
                         <th className="text-center py-3 px-3 text-xs text-stork-orange font-semibold">Pt</th>
                       </tr>
                     </thead>
@@ -446,7 +446,7 @@ export function FixturesView() {
                           <td className="py-2.5 px-2 text-center text-red-400 font-bold hidden sm:table-cell">{team.losses}</td>
                           <td className="py-2.5 px-2 text-center text-xs">{team.gf}</td>
                           <td className="py-2.5 px-2 text-center text-xs">{team.gs}</td>
-                          <td className="py-2.5 px-2 text-center text-xs hidden sm:table-cell">
+                          <td className="py-2.5 px-2 text-center text-xs">
                             <span className={team.diff > 0 ? "text-emerald-400" : team.diff < 0 ? "text-red-400" : "text-muted-foreground"}>
                               {team.diff > 0 ? `+${team.diff}` : team.diff}
                             </span>

@@ -75,7 +75,7 @@ export function AdminMatchesView() {
       const match = await createDailyMatch(leagueId, {
         home_team: homeTeam.trim(),
         away_team: awayTeam.trim(),
-        match_datetime: matchDatetime,
+        match_datetime: new Date(matchDatetime).toISOString(),
         competition: competition.trim() || "Serie A",
       });
       setMatches((prev) => [...prev, match].sort(
@@ -203,8 +203,12 @@ export function AdminMatchesView() {
                   const hasResult = match.home_score !== null && match.away_score !== null;
                   const s = scores[match.id] ?? { home: "", away: "" };
 
+                  const homeWins = hasResult && match.home_score! > match.away_score!;
+                  const awayWins = hasResult && match.away_score! > match.home_score!;
+                  const isDraw = hasResult && match.home_score === match.away_score;
+
                   return (
-                    <Card key={match.id} className={hasResult ? "border-emerald-500/30" : "border-stork-dark-border"}>
+                    <Card key={match.id} className={hasResult ? "border-emerald-500/40 bg-emerald-500/5" : "border-stork-dark-border"}>
                       <CardContent className="p-4">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
 
@@ -219,7 +223,9 @@ export function AdminMatchesView() {
 
                           {/* Partita */}
                           <div className="flex-1 flex items-center justify-center gap-3">
-                            <span className="font-semibold text-sm flex-1 text-right">{match.home_team}</span>
+                            <span className={`font-semibold text-sm flex-1 text-right ${homeWins ? "text-emerald-400 font-black" : awayWins ? "text-red-400" : isDraw ? "text-yellow-400" : ""}`}>
+                              {match.home_team}
+                            </span>
                             {hasResult ? (
                               <span className="text-xl font-black text-foreground shrink-0 px-2">
                                 {match.home_score} – {match.away_score}
@@ -227,7 +233,9 @@ export function AdminMatchesView() {
                             ) : (
                               <span className="text-xs text-muted-foreground font-bold shrink-0 px-2">VS</span>
                             )}
-                            <span className="font-semibold text-sm flex-1">{match.away_team}</span>
+                            <span className={`font-semibold text-sm flex-1 ${awayWins ? "text-emerald-400 font-black" : homeWins ? "text-red-400" : isDraw ? "text-yellow-400" : ""}`}>
+                              {match.away_team}
+                            </span>
                           </div>
 
                           {/* Input risultato */}
@@ -253,10 +261,9 @@ export function AdminMatchesView() {
                             />
                             <Button
                               size="sm"
-                              variant={hasResult ? "outline" : "default"}
                               onClick={() => handleSaveScore(match)}
                               disabled={savingScore === match.id}
-                              className="h-8 px-2"
+                              className={`h-8 px-2 ${hasResult ? "bg-emerald-600 hover:bg-emerald-700 text-white border-0" : ""}`}
                             >
                               {savingScore === match.id ? (
                                 <div className="w-3.5 h-3.5 border border-current border-t-transparent rounded-full animate-spin" />
