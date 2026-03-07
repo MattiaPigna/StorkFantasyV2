@@ -63,15 +63,11 @@ export function HomeView() {
         const existingIds = new Set(allPlayers.map((p) => p.id));
         setMyPlayersCount((t?.players ?? []).filter((id) => existingIds.has(id)).length);
       }
-      // Keep today (from midnight) + next 7 days. Also include yesterday so recent results show.
+      // Show yesterday + all future matches (no upper limit)
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
-      const cutoff = new Date(todayStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-      const upcoming = allMatches.filter((m) => {
-        const d = new Date(m.match_datetime);
-        return d >= yesterdayStart && d <= cutoff;
-      });
+      const upcoming = allMatches.filter((m) => new Date(m.match_datetime) >= yesterdayStart);
       setUpcomingMatches(upcoming);
       setIsLoading(false);
     }
@@ -85,11 +81,7 @@ export function HomeView() {
         const now2 = new Date();
         const todayStart2 = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate());
         const yesterdayStart2 = new Date(todayStart2.getTime() - 24 * 60 * 60 * 1000);
-        const cutoff2 = new Date(todayStart2.getTime() + 7 * 24 * 60 * 60 * 1000);
-        setUpcomingMatches(allMatches.filter((m) => {
-          const d = new Date(m.match_datetime);
-          return d >= yesterdayStart2 && d <= cutoff2;
-        }));
+        setUpcomingMatches(allMatches.filter((m) => new Date(m.match_datetime) >= yesterdayStart2));
       } catch {}
     }, 60000);
 
@@ -268,8 +260,7 @@ function UpcomingMatchesWidget({ matches, leagueId, onRefresh }: { matches: Dail
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
-      const cutoff = new Date(todayStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-      onRefresh(all.filter((m) => { const d = new Date(m.match_datetime); return d >= yesterdayStart && d <= cutoff; }));
+      onRefresh(all.filter((m) => new Date(m.match_datetime) >= yesterdayStart));
     } catch {} finally {
       setRefreshing(false);
     }

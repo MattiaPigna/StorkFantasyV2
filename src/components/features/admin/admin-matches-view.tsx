@@ -92,13 +92,17 @@ export function AdminMatchesView() {
   }
 
   async function handleSaveScore(match: DailyMatch) {
-    const s = scores[match.id];
-    const home = s?.home !== "" ? parseInt(s.home) : null;
-    const away = s?.away !== "" ? parseInt(s.away) : null;
+    const s = scores[match.id] ?? { home: "", away: "" };
+    const homeVal = s.home.trim();
+    const awayVal = s.away.trim();
+    const home = homeVal !== "" ? parseInt(homeVal, 10) : null;
+    const away = awayVal !== "" ? parseInt(awayVal, 10) : null;
+    if (home !== null && isNaN(home)) { toast({ variant: "destructive", title: "Valore gol casa non valido" }); return; }
+    if (away !== null && isNaN(away)) { toast({ variant: "destructive", title: "Valore gol ospite non valido" }); return; }
     setSavingScore(match.id);
     try {
-      await updateMatchScore(match.id, home, away);
-      setMatches((prev) => prev.map((m) => m.id === match.id ? { ...m, home_score: home, away_score: away } : m));
+      const updated = await updateMatchScore(match.id, home, away);
+      setMatches((prev) => prev.map((m) => m.id === match.id ? updated : m));
       toast({ title: "Risultato salvato!" });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });
