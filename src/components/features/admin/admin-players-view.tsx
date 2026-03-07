@@ -15,6 +15,7 @@ import {
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { getAllPlayers, createPlayer, deletePlayer } from "@/lib/db/players";
+import { getTournamentTeams, type TournamentTeam } from "@/lib/db/tournament-teams";
 import { useLeagueStore } from "@/store/league";
 import { PLAYER_ROLE_LABELS, PLAYER_ROLE_COLORS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +35,7 @@ export function AdminPlayersView() {
   const leagueId = activeLeague?.id ?? "";
 
   const [players, setPlayers] = useState<Player[]>([]);
+  const [teams, setTeams] = useState<TournamentTeam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -46,7 +48,9 @@ export function AdminPlayersView() {
 
   useEffect(() => {
     if (!leagueId) return;
-    getAllPlayers(leagueId).then(setPlayers).finally(() => setIsLoading(false));
+    Promise.all([getAllPlayers(leagueId), getTournamentTeams(leagueId)])
+      .then(([pl, t]) => { setPlayers(pl); setTeams(t); })
+      .finally(() => setIsLoading(false));
   }, [leagueId]);
 
   async function onSubmit(data: PlayerForm) {
@@ -141,7 +145,15 @@ export function AdminPlayersView() {
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Squadra</label>
-              <Input placeholder="Es. Juventus" {...register("team")} />
+              <select
+                {...register("team")}
+                className="flex h-10 w-full rounded-lg border border-stork-dark-border bg-muted px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stork-orange/50"
+              >
+                <option value="">— Seleziona squadra —</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.name}>{t.name}</option>
+                ))}
+              </select>
               {errors.team && <p className="text-xs text-destructive">{errors.team.message}</p>}
             </div>
             <div className="space-y-1">

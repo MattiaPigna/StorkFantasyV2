@@ -10,6 +10,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { getDailyMatches, createDailyMatch, deleteDailyMatch, updateMatchScore, type DailyMatch } from "@/lib/db/matches";
+import { getTournamentTeams, type TournamentTeam } from "@/lib/db/tournament-teams";
 import { useLeagueStore } from "@/store/league";
 import { useToast } from "@/hooks/use-toast";
 
@@ -32,6 +33,7 @@ export function AdminMatchesView() {
   const { toast } = useToast();
 
   const [matches, setMatches] = useState<DailyMatch[]>([]);
+  const [teams, setTeams] = useState<TournamentTeam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [homeTeam, setHomeTeam] = useState("");
@@ -46,6 +48,7 @@ export function AdminMatchesView() {
 
   useEffect(() => {
     if (!leagueId) return;
+    getTournamentTeams(leagueId).then(setTeams);
     getDailyMatches(leagueId)
       .then((m) => {
         setMatches(m);
@@ -135,11 +138,29 @@ export function AdminMatchesView() {
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Squadra Casa *</label>
-              <Input placeholder="Es. Juventus" value={homeTeam} onChange={(e) => setHomeTeam(e.target.value)} />
+              <select
+                value={homeTeam}
+                onChange={(e) => setHomeTeam(e.target.value)}
+                className="flex h-10 w-full rounded-lg border border-stork-dark-border bg-muted px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stork-orange/50"
+              >
+                <option value="">— Seleziona —</option>
+                {teams.filter((t) => t.name !== awayTeam).map((t) => (
+                  <option key={t.id} value={t.name}>{t.name}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Squadra Ospite *</label>
-              <Input placeholder="Es. Inter" value={awayTeam} onChange={(e) => setAwayTeam(e.target.value)} />
+              <select
+                value={awayTeam}
+                onChange={(e) => setAwayTeam(e.target.value)}
+                className="flex h-10 w-full rounded-lg border border-stork-dark-border bg-muted px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stork-orange/50"
+              >
+                <option value="">— Seleziona —</option>
+                {teams.filter((t) => t.name !== homeTeam).map((t) => (
+                  <option key={t.id} value={t.name}>{t.name}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="grid sm:grid-cols-2 gap-3">
