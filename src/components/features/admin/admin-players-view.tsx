@@ -77,19 +77,36 @@ export function AdminPlayersView() {
       const json = JSON.parse(text);
       const items: { name: string; team: string; role: string; price: number }[] = Array.isArray(json) ? json : [json];
       const created: Player[] = [];
+      const skipped: string[] = [];
+
       for (const item of items) {
         if (!item.name || !item.team || !item.role || !item.price) continue;
+        // Validate team against tournament teams (case-insensitive)
+        const matched = teams.find((t) => t.name.toLowerCase() === item.team.toLowerCase());
+        if (!matched) {
+          skipped.push(item.name);
+          continue;
+        }
         const p = await createPlayer(leagueId, {
           name: item.name,
-          team: item.team,
+          team: matched.name, // use exact name from tournament_teams
           role: (item.role as PlayerRole),
           price: Number(item.price),
           is_active: true,
         });
         created.push(p);
       }
+
       setPlayers((prev) => [...prev, ...created]);
-      toast({ title: `${created.length} giocatori importati!` });
+      if (skipped.length > 0) {
+        toast({
+          variant: "destructive",
+          title: `${created.length} importati, ${skipped.length} scartati`,
+          description: `Squadra non trovata: ${skipped.slice(0, 3).join(", ")}${skipped.length > 3 ? ` e altri ${skipped.length - 3}` : ""}`,
+        });
+      } else {
+        toast({ title: `${created.length} giocatori importati!` });
+      }
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore importazione", description: err instanceof Error ? err.message : "JSON non valido" });
     } finally {
