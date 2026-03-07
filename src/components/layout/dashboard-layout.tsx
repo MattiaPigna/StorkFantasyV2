@@ -182,15 +182,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       {/* Bottom nav Mobile only */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-stork-dark-card/95 backdrop-blur-md border-t border-stork-dark-border">
-        <div className="flex">
-          {navItems.map((item) => {
+        <div className="flex overflow-x-auto scrollbar-none">
+          {[...navItems, { href: "/dashboard/profile", label: "Profilo", icon: User }].map((item) => {
             const active = pathname === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-all",
+                  "flex-shrink-0 flex flex-col items-center gap-1 py-2.5 px-3 text-[10px] font-medium transition-all min-w-[60px]",
                   active ? "text-stork-orange" : "text-muted-foreground"
                 )}
               >

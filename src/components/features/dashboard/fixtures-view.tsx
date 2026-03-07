@@ -413,13 +413,13 @@ export function FixturesView() {
                       <tr className="border-b border-stork-dark-border bg-stork-dark/50">
                         <th className="text-left py-3 px-3 text-xs text-muted-foreground font-semibold w-8">#</th>
                         <th className="text-left py-3 px-3 text-xs text-muted-foreground font-semibold">Squadra</th>
-                        <th className="text-center py-3 px-2 text-xs text-muted-foreground font-semibold">G</th>
-                        <th className="text-center py-3 px-2 text-xs text-emerald-400 font-semibold">V</th>
-                        <th className="text-center py-3 px-2 text-xs text-yellow-400 font-semibold">P</th>
-                        <th className="text-center py-3 px-2 text-xs text-red-400 font-semibold">S</th>
+                        <th className="text-center py-3 px-2 text-xs text-muted-foreground font-semibold hidden sm:table-cell">G</th>
+                        <th className="text-center py-3 px-2 text-xs text-emerald-400 font-semibold hidden sm:table-cell">V</th>
+                        <th className="text-center py-3 px-2 text-xs text-yellow-400 font-semibold hidden sm:table-cell">P</th>
+                        <th className="text-center py-3 px-2 text-xs text-red-400 font-semibold hidden sm:table-cell">S</th>
                         <th className="text-center py-3 px-2 text-xs text-muted-foreground font-semibold">GF</th>
                         <th className="text-center py-3 px-2 text-xs text-muted-foreground font-semibold">GS</th>
-                        <th className="text-center py-3 px-2 text-xs text-muted-foreground font-semibold">DR</th>
+                        <th className="text-center py-3 px-2 text-xs text-muted-foreground font-semibold hidden sm:table-cell">DR</th>
                         <th className="text-center py-3 px-3 text-xs text-stork-orange font-semibold">Pt</th>
                       </tr>
                     </thead>
@@ -437,16 +437,16 @@ export function FixturesView() {
                                 ? <img src={team.logo_url} alt={team.team} className="w-6 h-6 object-contain rounded shrink-0" />
                                 : <ShieldCheck className="w-4 h-4 text-muted-foreground/40 shrink-0" />
                               }
-                              <span className="font-semibold">{team.team}</span>
+                              <span className="font-semibold text-sm">{team.team}</span>
                             </div>
                           </td>
-                          <td className="py-2.5 px-2 text-center text-muted-foreground text-xs">{team.played}</td>
-                          <td className="py-2.5 px-2 text-center text-emerald-400 font-bold">{team.wins}</td>
-                          <td className="py-2.5 px-2 text-center text-yellow-400 font-bold">{team.draws}</td>
-                          <td className="py-2.5 px-2 text-center text-red-400 font-bold">{team.losses}</td>
+                          <td className="py-2.5 px-2 text-center text-muted-foreground text-xs hidden sm:table-cell">{team.played}</td>
+                          <td className="py-2.5 px-2 text-center text-emerald-400 font-bold hidden sm:table-cell">{team.wins}</td>
+                          <td className="py-2.5 px-2 text-center text-yellow-400 font-bold hidden sm:table-cell">{team.draws}</td>
+                          <td className="py-2.5 px-2 text-center text-red-400 font-bold hidden sm:table-cell">{team.losses}</td>
                           <td className="py-2.5 px-2 text-center text-xs">{team.gf}</td>
                           <td className="py-2.5 px-2 text-center text-xs">{team.gs}</td>
-                          <td className="py-2.5 px-2 text-center text-xs">
+                          <td className="py-2.5 px-2 text-center text-xs hidden sm:table-cell">
                             <span className={team.diff > 0 ? "text-emerald-400" : team.diff < 0 ? "text-red-400" : "text-muted-foreground"}>
                               {team.diff > 0 ? `+${team.diff}` : team.diff}
                             </span>

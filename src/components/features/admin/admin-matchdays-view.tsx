@@ -157,21 +157,21 @@ export function AdminMatchdaysView() {
           {matchdays.map((matchday) => (
             <Card key={matchday.id} className={matchday.status === "calculated" ? "border-green-500/30" : ""}>
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <CardTitle className="text-base">{matchday.name}</CardTitle>
-                    <Badge variant={matchday.status === "calculated" ? "success" : "warning"}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <CardTitle className="text-base truncate">{matchday.name}</CardTitle>
+                    <Badge variant={matchday.status === "calculated" ? "success" : "warning"} className="shrink-0">
                       {matchday.status === "calculated" ? "Calcolata" : "Aperta"}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setExpandedId(expandedId === matchday.id ? null : matchday.id)}
                     >
                       {expandedId === matchday.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      Statistiche
+                      <span className="hidden sm:inline">Statistiche</span>
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
