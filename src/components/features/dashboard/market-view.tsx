@@ -101,10 +101,18 @@ export function MarketView() {
     if (!team || !userId) return;
     setActionLoading(player.id);
     try {
-      await sellPlayer(team.id, player.id, player.price, team.players, team.credits);
-      setTeam((prev) =>
-        prev ? { ...prev, players: prev.players.filter((id) => id !== player.id), credits: prev.credits + player.price } : prev
-      );
+      await sellPlayer(team.id, player.id, player.price, team.players, team.credits, team.lineup ?? []);
+      setTeam((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          players: prev.players.filter((id) => id !== player.id),
+          credits: prev.credits + player.price,
+          lineup: (prev.lineup ?? []).map((slot) =>
+            slot.player_id === player.id ? { ...slot, player_id: null } : slot
+          ),
+        };
+      });
       toast({ title: "Vendita completata!", description: `+${formatCredits(player.price)} accreditati.` });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore durante la vendita" });

@@ -91,14 +91,19 @@ export async function sellPlayer(
   playerId: string,
   price: number,
   currentPlayers: string[],
-  currentCredits: number
+  currentCredits: number,
+  currentLineup: import("@/types").LineupSlot[]
 ): Promise<void> {
   const supabase = createClient();
+  const updatedLineup = currentLineup.map((slot) =>
+    slot.player_id === playerId ? { ...slot, player_id: null } : slot
+  );
   const { error } = await supabase
     .from("user_teams")
     .update({
       players: currentPlayers.filter((id) => id !== playerId),
       credits: currentCredits + price,
+      lineup: updatedLineup,
     })
     .eq("id", teamId);
 
