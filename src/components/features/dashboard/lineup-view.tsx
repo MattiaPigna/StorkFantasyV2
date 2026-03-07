@@ -69,6 +69,7 @@ export function LineupView() {
   const myPlayers = players.filter((p) => team?.players.includes(p.id));
   const playersInLineup = lineup.map((s) => s.player_id).filter(Boolean);
   const filledSlots = playersInLineup.length;
+  const benchPlayers = myPlayers.filter((p) => !playersInLineup.includes(p.id));
 
   const getPlayerInSlot = useCallback((slotIdx: number): Player | null => {
     const slot = lineup[slotIdx];
@@ -158,9 +159,10 @@ export function LineupView() {
         </div>
       )}
 
-      <div className="grid md:grid-cols-[320px_1fr] lg:grid-cols-[360px_1fr] gap-5">
-        {/* ===== PITCH ===== */}
-        <Card className="overflow-hidden border-emerald-900/30">
+      {/* ===== PITCH ROW ===== */}
+      <div className="flex flex-col md:flex-row gap-5 items-start">
+        {/* PITCH — max-width per restare compatto in portrait */}
+        <Card className="overflow-hidden border-emerald-900/30 w-full md:w-[440px] shrink-0">
           {/* Riquadro punteggio live */}
           {activeMatchday && (() => {
             const matchdayScore = team?.matchday_points?.[activeMatchday.id] ?? null;
@@ -193,10 +195,9 @@ export function LineupView() {
             );
           })()}
           <CardContent className="p-0">
-            {/* Aspect ratio ridotto ~50%: campo più compatto */}
             <div
               className="relative w-full overflow-hidden rounded-b-xl"
-              style={{ paddingBottom: `${Math.max(110, 80 + lineupSize * 4)}%` }}
+              style={{ paddingBottom: `${Math.max(120, 90 + lineupSize * 3.5)}%` }}
             >
               {/* Erba */}
               <div className="absolute inset-0 bg-gradient-to-b from-emerald-950 via-emerald-900/90 to-emerald-950 rounded-b-xl" />
@@ -373,66 +374,15 @@ export function LineupView() {
           </CardContent>
         </Card>
 
-        {(locked || (activeMatchday !== null && Object.keys(matchdayStats).length > 0)) ? (
-          /* ===== LIVE STATS PANEL ===== */
-          <div className="space-y-3">
-            {activeMatchday && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-stork-orange/10 border border-stork-orange/30">
-                <span className="w-2 h-2 rounded-full bg-stork-orange animate-pulse" />
-                <span className="text-xs font-semibold text-stork-orange">{activeMatchday.name}</span>
-                {activeMatchday.status === "calculated" && <Badge variant="success" className="text-[10px] ml-auto">Calcolata</Badge>}
-              </div>
-            )}
-
-            {/* I miei titolari */}
-            <Card>
-              <CardHeader className="pb-2 border-b border-stork-dark-border">
-                <CardTitle className="text-sm text-stork-orange">I miei titolari</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 max-h-[280px] overflow-y-auto">
-                {playersInLineup.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-6">Nessun titolare schierato</p>
-                ) : (
-                  playersInLineup.map((pid) => {
-                    const p = players.find((pl) => pl.id === pid);
-                    if (!p) return null;
-                    const s = matchdayStats[p.id];
-                    return <StatsRow key={p.id} player={p} stats={s} highlight />;
-                  })
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Giocatori sul mercato */}
-            <Card>
-              <CardHeader className="pb-2 border-b border-stork-dark-border">
-                <CardTitle className="text-sm text-muted-foreground">Altri giocatori</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 max-h-[280px] overflow-y-auto">
-                {players.filter((p) => !team?.players.includes(p.id)).length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-6">Nessun giocatore</p>
-                ) : (
-                  players.filter((p) => !team?.players.includes(p.id)).map((p) => {
-                    const s = matchdayStats[p.id];
-                    return <StatsRow key={p.id} player={p} stats={s} />;
-                  })
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          /* ===== LISTA GIOCATORI ===== */
-          <Card>
+        {/* ===== PLAYER PICKER — appare a lato quando si seleziona uno slot ===== */}
+        {selectedSlot !== null && !locked && (
+          <Card className="flex-1 min-w-0 animate-fade-in">
             <CardHeader className="pb-2 border-b border-stork-dark-border">
               <CardTitle className="text-sm">
-                {selectedSlot !== null ? (
-                  <span className="text-stork-orange font-bold flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-stork-orange animate-pulse" />
-                    {pitchSlots[selectedSlot]?.isGoalkeeper ? "Seleziona Portiere" : "Seleziona Giocatore"}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground font-medium">La tua rosa ({myPlayers.length})</span>
-                )}
+                <span className="text-stork-orange font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-stork-orange animate-pulse" />
+                  {pitchSlots[selectedSlot]?.isGoalkeeper ? "Seleziona Portiere" : "Seleziona Giocatore"}
+                </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-2 max-h-[520px] overflow-y-auto space-y-0.5">
@@ -446,19 +396,64 @@ export function LineupView() {
                     <div className="px-2 py-1 text-[10px] font-bold text-stork-gold uppercase tracking-wider">Portieri</div>
                   )}
                   {myPlayers.filter(p => p.role === "P").map(player => (
-                    <PlayerListItem key={player.id} player={player} inLineup={playersInLineup.includes(player.id)} isClickable={selectedSlot !== null && !locked} onSelect={handlePlayerSelect} />
+                    <PlayerListItem key={player.id} player={player} inLineup={playersInLineup.includes(player.id)} isClickable onSelect={handlePlayerSelect} />
                   ))}
                   {myPlayers.filter(p => p.role === "M").length > 0 && (
                     <div className="px-2 py-1 mt-2 text-[10px] font-bold text-stork-orange uppercase tracking-wider">Giocatori di Movimento</div>
                   )}
                   {myPlayers.filter(p => p.role === "M").map(player => (
-                    <PlayerListItem key={player.id} player={player} inLineup={playersInLineup.includes(player.id)} isClickable={selectedSlot !== null && !locked} onSelect={handlePlayerSelect} />
+                    <PlayerListItem key={player.id} player={player} inLineup={playersInLineup.includes(player.id)} isClickable onSelect={handlePlayerSelect} />
                   ))}
                 </>
               )}
             </CardContent>
           </Card>
         )}
+      </div>
+
+      {/* ===== TITOLARI + PANCHINA ===== */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Titolari */}
+        <Card>
+          <CardHeader className="pb-2 border-b border-stork-dark-border">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <span className="text-stork-orange font-bold">Titolari</span>
+              <Badge variant="outline" className="text-[10px]">{filledSlots}/{lineupSize}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {playersInLineup.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">Nessun titolare schierato</p>
+            ) : (
+              playersInLineup.map((pid) => {
+                const p = players.find((pl) => pl.id === pid);
+                if (!p) return null;
+                return <StatsRow key={p.id} player={p} stats={matchdayStats[p.id]} highlight />;
+              })
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Panchina */}
+        <Card>
+          <CardHeader className="pb-2 border-b border-stork-dark-border">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <span className="text-muted-foreground font-bold">Panchina</span>
+              <Badge variant="outline" className="text-[10px]">{benchPlayers.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {benchPlayers.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">
+                {myPlayers.length === 0 ? "Nessun giocatore in rosa" : "Tutti i giocatori sono in campo"}
+              </p>
+            ) : (
+              benchPlayers.map((p) => (
+                <StatsRow key={p.id} player={p} stats={matchdayStats[p.id]} />
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
