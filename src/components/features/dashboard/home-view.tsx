@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Trophy, Coins, Users, TrendingUp, Calendar, Tv, Star, ExternalLink, Clock, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
@@ -18,6 +19,7 @@ import type { Profile, UserTeam, AppSettings, Matchday, Sponsor } from "@/types"
 export function HomeView() {
   const { activeLeague } = useLeagueStore();
   const leagueId = activeLeague?.id ?? "";
+  const router = useRouter();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [team, setTeam] = useState<UserTeam | null>(null);
@@ -45,7 +47,14 @@ export function HomeView() {
       setSponsors(sps);
       const calculated = matchdays.filter((m) => m.status === "calculated");
       if (calculated.length > 0) setLastMatchday(calculated[0]);
-      if (prof) setTeam(await getMyTeam(user.id, leagueId));
+      if (prof) {
+        const t = await getMyTeam(user.id, leagueId);
+        if (!t || (t.players?.length ?? 0) === 0) {
+          router.replace("/league/onboarding");
+          return;
+        }
+        setTeam(t);
+      }
       // Keep today + future matches (up to 7 days out)
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
