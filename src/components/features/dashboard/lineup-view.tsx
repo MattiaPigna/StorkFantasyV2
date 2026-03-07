@@ -117,6 +117,10 @@ export function LineupView() {
 
   async function handleSave() {
     if (!team || locked) return;
+    if (filledSlots < lineupSize) {
+      toast({ variant: "destructive", title: "Formazione incompleta", description: `Devi schierare tutti i ${lineupSize} titolari prima di salvare.` });
+      return;
+    }
     setIsSaving(true);
     try {
       await updateLineup(team.id, lineup);
