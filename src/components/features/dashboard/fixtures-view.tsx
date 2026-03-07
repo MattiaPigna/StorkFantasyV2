@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Swords, Clock, Trophy, Target, Zap, TrendingUp, ChevronDown, Users, ShieldCheck } from "lucide-react";
+import { Swords, Clock, Trophy, Target, Zap, TrendingUp, ChevronDown, Users, ShieldCheck, X, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getDailyMatches, type DailyMatch } from "@/lib/db/matches";
-import { getTopScorers, type TopScorer } from "@/lib/db/players";
+import { getTopScorers, getPlayers, type TopScorer } from "@/lib/db/players";
 import { getTournamentTeams, type TournamentTeam } from "@/lib/db/tournament-teams";
 import { useLeagueStore } from "@/store/league";
-import { PLAYER_ROLE_LABELS } from "@/lib/constants";
+import { PLAYER_ROLE_LABELS, PLAYER_ROLE_COLORS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import type { Player } from "@/types";
 
 type Tab = "squadre" | "classifica" | "partite";
 
@@ -81,16 +82,19 @@ export function FixturesView() {
   const [tab, setTab] = useState<Tab>("partite");
   const [matches, setMatches] = useState<DailyMatch[]>([]);
   const [teams, setTeams] = useState<TournamentTeam[]>([]);
+  const [allPlayers, setAllPlayers] = useState<Player[]>([]);
   const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [scorersLimit, setScorersLimit] = useState(10);
+  const [selectedTeam, setSelectedTeam] = useState<TournamentTeam | null>(null);
 
   useEffect(() => {
     if (!leagueId) return;
-    Promise.all([getDailyMatches(leagueId), getTournamentTeams(leagueId), getTopScorers(leagueId)])
-      .then(([m, t, sc]) => {
+    Promise.all([getDailyMatches(leagueId), getTournamentTeams(leagueId), getTopScorers(leagueId), getPlayers(leagueId)])
+      .then(([m, t, sc, pl]) => {
         setMatches(m);
         setTeams(t);
+        setAllPlayers(pl);
         setTopScorers(sc.filter((s) => s.total_goals > 0 || s.total_assists > 0));
       })
       .finally(() => setIsLoading(false));
@@ -363,34 +367,126 @@ export function FixturesView() {
             </Card>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground px-1">{teams.length} squadre partecipanti</p>
+              <p className="text-xs text-muted-foreground px-1">{teams.length} squadre partecipanti · tocca una squadra per vedere i giocatori</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                {teams.map((team, i) => (
-                  <Card key={team.id} className="border-stork-dark-border hover:border-stork-orange/30 transition-all">
-                    <CardContent className="p-4 flex flex-col items-center gap-2 text-center">
-                      {team.logo_url ? (
-                        <img
-                          src={team.logo_url}
-                          alt={team.name}
-                          className="w-14 h-14 object-contain rounded-lg"
-                        />
-                      ) : (
-                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-stork-orange/20 to-stork-gold/10 border border-stork-orange/20 flex items-center justify-center">
-                          <ShieldCheck className="w-6 h-6 text-stork-orange" />
+                {teams.map((team, i) => {
+                  const playerCount = allPlayers.filter((p) => p.team === team.name).length;
+                  return (
+                    <Card
+                      key={team.id}
+                      className="border-stork-dark-border hover:border-stork-orange/40 hover:bg-stork-orange/3 transition-all cursor-pointer active:scale-95"
+                      onClick={() => setSelectedTeam(team)}
+                    >
+                      <CardContent className="p-4 flex flex-col items-center gap-2 text-center relative">
+                        <ChevronRight className="absolute top-2 right-2 w-3.5 h-3.5 text-muted-foreground/40" />
+                        {team.logo_url ? (
+                          <img src={team.logo_url} alt={team.name} className="w-14 h-14 object-contain rounded-lg" />
+                        ) : (
+                          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-stork-orange/20 to-stork-gold/10 border border-stork-orange/20 flex items-center justify-center">
+                            <ShieldCheck className="w-6 h-6 text-stork-orange" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-semibold text-sm leading-tight">{team.name}</p>
+                          <p className="text-xs text-muted-foreground">{playerCount > 0 ? `${playerCount} giocatori` : `#${i + 1}`}</p>
                         </div>
-                      )}
-                      <div>
-                        <p className="font-semibold text-sm leading-tight">{team.name}</p>
-                        <p className="text-xs text-muted-foreground">#{i + 1}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </>
           )}
         </div>
       )}
+
+      {/* ── MODAL GIOCATORI SQUADRA ── */}
+      {selectedTeam && (() => {
+        const teamPlayers = allPlayers
+          .filter((p) => p.team === selectedTeam.name)
+          .sort((a, b) => a.role.localeCompare(b.role) || a.name.localeCompare(b.name));
+        const goalkeepers = teamPlayers.filter((p) => p.role === "P");
+        const outfield = teamPlayers.filter((p) => p.role !== "P");
+
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setSelectedTeam(null)}
+          >
+            <div
+              className="bg-stork-dark-card border border-stork-dark-border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[80vh] flex flex-col shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-stork-dark-border shrink-0">
+                {selectedTeam.logo_url ? (
+                  <img src={selectedTeam.logo_url} alt={selectedTeam.name} className="w-10 h-10 object-contain rounded-lg" />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-stork-orange/20 to-stork-gold/10 border border-stork-orange/20 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-5 h-5 text-stork-orange" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-base truncate">{selectedTeam.name}</p>
+                  <p className="text-xs text-muted-foreground">{teamPlayers.length} giocatori in rosa</p>
+                </div>
+                <button
+                  onClick={() => setSelectedTeam(null)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-stork-dark transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Players list */}
+              <div className="overflow-y-auto flex-1 p-4 space-y-4">
+                {teamPlayers.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Nessun giocatore trovato</p>
+                    <p className="text-xs mt-1">I giocatori vengono dal mercato — il nome della squadra deve corrispondere</p>
+                  </div>
+                ) : (
+                  <>
+                    {goalkeepers.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Portieri</p>
+                        <div className="space-y-1">
+                          {goalkeepers.map((p) => (
+                            <div key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-stork-dark border border-stork-dark-border">
+                              <Badge className={cn("text-[10px] px-1.5 py-0 shrink-0", PLAYER_ROLE_COLORS[p.role])} variant="outline">
+                                {PLAYER_ROLE_LABELS[p.role]}
+                              </Badge>
+                              <span className="text-sm font-medium flex-1">{p.name}</span>
+                              <span className="text-xs text-yellow-400 font-semibold">{p.price} SK</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {outfield.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Movimento</p>
+                        <div className="space-y-1">
+                          {outfield.map((p) => (
+                            <div key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-stork-dark border border-stork-dark-border">
+                              <Badge className={cn("text-[10px] px-1.5 py-0 shrink-0", PLAYER_ROLE_COLORS[p.role])} variant="outline">
+                                {PLAYER_ROLE_LABELS[p.role]}
+                              </Badge>
+                              <span className="text-sm font-medium flex-1">{p.name}</span>
+                              <span className="text-xs text-yellow-400 font-semibold">{p.price} SK</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
