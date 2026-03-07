@@ -6,59 +6,46 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ArrowLeft, Users, UserCog, LayoutGrid, Calendar,
   AlertTriangle, Trash2, Loader2, Shield, CheckCircle2,
+  Pencil, X, Check, UserMinus,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface LeagueInfo {
-  id: string;
-  name: string;
-  invite_code: string;
-  is_active: boolean;
-  created_at: string;
-  owner_id: string;
+  id: string; name: string; invite_code: string;
+  is_active: boolean; created_at: string; owner_id: string;
 }
 
 interface MemberRow {
-  user_id: string;
-  joined_at: string;
-  manager_name: string;
-  team_name: string;
-  is_admin: boolean;
-  credits: number;
-  total_points: number;
-  player_count: number;
+  user_id: string; joined_at: string; manager_name: string;
+  team_name: string; is_admin: boolean; credits: number;
+  total_points: number; player_count: number; team_id: string;
 }
 
 interface PlayerRow {
-  id: string;
-  name: string;
-  team: string;
-  role: string;
-  price: number;
-  is_active: boolean;
+  id: string; name: string; team: string;
+  role: string; price: number; is_active: boolean;
 }
 
 interface RosaRow {
-  user_id: string;
-  manager_name: string;
-  team_name: string;
-  team_id: string;
-  players: string[];
-  orphans: string[];
+  user_id: string; manager_name: string; team_name: string;
+  team_id: string; players: string[]; orphans: string[];
+  player_names: Record<string, string>;
 }
 
 interface MatchdayRow {
-  id: string;
-  number: number;
-  name: string;
-  status: string;
-  created_at: string;
-  stat_count: number;
+  id: string; number: number; name: string;
+  status: string; created_at: string; stat_count: number;
 }
 
 type Tab = "utenti" | "giocatori" | "rose" | "giornate";
@@ -78,10 +65,14 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
   const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [rose, setRose] = useState<RosaRow[]>([]);
   const [matchdays, setMatchdays] = useState<MatchdayRow[]>([]);
-
   const [tabLoaded, setTabLoaded] = useState<Set<Tab>>(new Set());
 
-  // ── Load league info ──────────────────────────────────────────────────────
+  // edit states
+  const [editingCredits, setEditingCredits] = useState<string | null>(null);
+  const [creditsValue, setCreditsValue] = useState("");
+  const [editingPlayer, setEditingPlayer] = useState<string | null>(null);
+  const [playerEdit, setPlayerEdit] = useState<Partial<PlayerRow>>({});
+
   useEffect(() => {
     async function loadLeague() {
       const supabase = createClient();
@@ -92,142 +83,181 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
     loadLeague();
   }, [id]);
 
-  // ── Load tab data on switch ───────────────────────────────────────────────
   useEffect(() => {
     if (tabLoaded.has(tab)) return;
-
     async function loadTab() {
       const supabase = createClient();
 
       if (tab === "utenti") {
         const { data: memberData } = await supabase
-          .from("league_members")
-          .select("user_id, joined_at")
-          .eq("league_id", id);
-
-        if (!memberData || memberData.length === 0) { setTabLoaded((s) => new Set(s).add(tab)); return; }
-
+          .from("league_members").select("user_id, joined_at").eq("league_id", id);
+        if (!memberData?.length) { markLoaded(); return; }
         const userIds = memberData.map((m) => m.user_id);
         const [{ data: profiles }, { data: teams }] = await Promise.all([
           supabase.from("profiles").select("id, manager_name, team_name, is_admin").in("id", userIds),
-          supabase.from("user_teams").select("user_id, credits, total_points, players").eq("league_id", id).in("user_id", userIds),
+          supabase.from("user_teams").select("id, user_id, credits, total_points, players").eq("league_id", id).in("user_id", userIds),
         ]);
-
-        const rows: MemberRow[] = memberData.map((m) => {
+        setMembers(memberData.map((m) => {
           const p = (profiles ?? []).find((x) => x.id === m.user_id);
           const t = (teams ?? []).find((x) => x.user_id === m.user_id);
           return {
-            user_id: m.user_id,
-            joined_at: m.joined_at,
-            manager_name: p?.manager_name ?? "—",
-            team_name: p?.team_name ?? "—",
-            is_admin: p?.is_admin ?? false,
-            credits: t?.credits ?? 0,
+            user_id: m.user_id, joined_at: m.joined_at,
+            manager_name: p?.manager_name ?? "—", team_name: p?.team_name ?? "—",
+            is_admin: p?.is_admin ?? false, credits: t?.credits ?? 0,
             total_points: t?.total_points ?? 0,
             player_count: (t?.players as string[] | null)?.length ?? 0,
+            team_id: t?.id ?? "",
           };
-        });
-        setMembers(rows);
+        }));
       }
 
       if (tab === "giocatori") {
-        const { data } = await supabase
-          .from("players")
+        const { data } = await supabase.from("players")
           .select("id, name, team, role, price, is_active")
-          .eq("league_id", id)
-          .order("role").order("name");
+          .eq("league_id", id).order("role").order("name");
         setPlayers(data ?? []);
       }
 
       if (tab === "rose") {
         const [{ data: teams }, { data: playerData }, { data: profiles }] = await Promise.all([
           supabase.from("user_teams").select("id, user_id, players").eq("league_id", id),
-          supabase.from("players").select("id").eq("league_id", id),
+          supabase.from("players").select("id, name").eq("league_id", id),
           supabase.from("profiles").select("id, manager_name, team_name"),
         ]);
-
-        const existingIds = new Set((playerData ?? []).map((p) => p.id));
-        const rows: RosaRow[] = (teams ?? []).map((t) => {
+        const playerMap = Object.fromEntries((playerData ?? []).map((p) => [p.id, p.name]));
+        const existingIds = new Set(Object.keys(playerMap));
+        setRose((teams ?? []).map((t) => {
           const pl = (t.players as string[]) ?? [];
           const profile = (profiles ?? []).find((p) => p.id === t.user_id);
           return {
-            user_id: t.user_id,
-            team_id: t.id,
+            user_id: t.user_id, team_id: t.id,
             manager_name: profile?.manager_name ?? "—",
             team_name: profile?.team_name ?? "—",
-            players: pl,
-            orphans: pl.filter((pid) => !existingIds.has(pid)),
+            players: pl, orphans: pl.filter((pid) => !existingIds.has(pid)),
+            player_names: playerMap,
           };
-        });
-        setRose(rows);
+        }));
       }
 
       if (tab === "giornate") {
-        const { data } = await supabase
-          .from("matchdays")
+        const { data } = await supabase.from("matchdays")
           .select("id, number, name, status, created_at, player_match_stats(count)")
-          .eq("league_id", id)
-          .order("number", { ascending: false });
-
-        const rows: MatchdayRow[] = (data ?? []).map((m) => ({
-          id: m.id,
-          number: m.number,
-          name: m.name,
-          status: m.status,
+          .eq("league_id", id).order("number", { ascending: false });
+        setMatchdays((data ?? []).map((m) => ({
+          id: m.id, number: m.number, name: m.name, status: m.status,
           created_at: m.created_at,
           stat_count: (m.player_match_stats as unknown as { count: number }[])?.[0]?.count ?? 0,
-        }));
-        setMatchdays(rows);
+        })));
       }
 
-      setTabLoaded((s) => new Set(s).add(tab));
+      markLoaded();
     }
-
+    function markLoaded() { setTabLoaded((s) => new Set(s).add(tab)); }
     loadTab();
   }, [tab, id, tabLoaded]);
 
-  // ── Clean orphans ─────────────────────────────────────────────────────────
+  // ── Actions ───────────────────────────────────────────────────────────────
+
+  async function kickMember(userId: string) {
+    const supabase = createClient();
+    const { error } = await supabase.from("league_members").delete()
+      .eq("league_id", id).eq("user_id", userId);
+    if (error) { toast({ variant: "destructive", title: "Errore", description: error.message }); return; }
+    setMembers((prev) => prev.filter((m) => m.user_id !== userId));
+    toast({ title: "Membro rimosso dalla lega" });
+  }
+
+  async function saveCredits(member: MemberRow) {
+    const val = parseInt(creditsValue);
+    if (isNaN(val) || val < 0) { toast({ variant: "destructive", title: "Valore non valido" }); return; }
+    const supabase = createClient();
+    const { error } = await supabase.from("user_teams").update({ credits: val }).eq("id", member.team_id);
+    if (error) { toast({ variant: "destructive", title: "Errore", description: error.message }); return; }
+    setMembers((prev) => prev.map((m) => m.user_id === member.user_id ? { ...m, credits: val } : m));
+    setEditingCredits(null);
+    toast({ title: "Crediti aggiornati" });
+  }
+
+  async function savePlayer(player: PlayerRow) {
+    const supabase = createClient();
+    const updates = {
+      name: playerEdit.name ?? player.name,
+      team: playerEdit.team ?? player.team,
+      role: playerEdit.role ?? player.role,
+      price: playerEdit.price ?? player.price,
+    };
+    const { error } = await supabase.from("players").update(updates).eq("id", player.id);
+    if (error) { toast({ variant: "destructive", title: "Errore", description: error.message }); return; }
+    setPlayers((prev) => prev.map((p) => p.id === player.id ? { ...p, ...updates } : p));
+    setEditingPlayer(null);
+    toast({ title: "Giocatore aggiornato" });
+  }
+
+  async function deletePlayer(player: PlayerRow) {
+    const supabase = createClient();
+    const { error } = await supabase.from("players").delete().eq("id", player.id);
+    if (error) { toast({ variant: "destructive", title: "Errore", description: error.message }); return; }
+
+    // Remove from all user_teams in the league
+    const { data: teams } = await supabase.from("user_teams")
+      .select("id, players, lineup").eq("league_id", id);
+    const affected = (teams ?? []).filter((t) => (t.players as string[]).includes(player.id));
+    await Promise.all(affected.map((t) =>
+      supabase.from("user_teams").update({
+        players: (t.players as string[]).filter((pid: string) => pid !== player.id),
+        lineup: (t.lineup as { position: number; player_id: string | null }[]).map((s) =>
+          s.player_id === player.id ? { ...s, player_id: null } : s
+        ),
+      }).eq("id", t.id)
+    ));
+
+    setPlayers((prev) => prev.filter((p) => p.id !== player.id));
+    toast({ title: "Giocatore eliminato", description: `${player.name} rimosso da tutte le rose.` });
+  }
+
+  async function removeFromRosa(row: RosaRow, playerId: string) {
+    const supabase = createClient();
+    const updated = row.players.filter((pid) => pid !== playerId);
+    const { error } = await supabase.from("user_teams").update({ players: updated }).eq("id", row.team_id);
+    if (error) { toast({ variant: "destructive", title: "Errore", description: error.message }); return; }
+    setRose((prev) => prev.map((r) => r.team_id === row.team_id
+      ? { ...r, players: updated, orphans: r.orphans.filter((o) => o !== playerId) } : r
+    ));
+    toast({ title: "Giocatore rimosso dalla rosa" });
+  }
+
   async function cleanOrphans(row: RosaRow) {
     const supabase = createClient();
     const cleaned = row.players.filter((pid) => !row.orphans.includes(pid));
-    const { error } = await supabase
-      .from("user_teams")
-      .update({
-        players: cleaned,
-        lineup: [] as unknown[],
-      })
-      .eq("id", row.team_id);
+    const { error } = await supabase.from("user_teams")
+      .update({ players: cleaned, lineup: [] as unknown[] }).eq("id", row.team_id);
+    if (error) { toast({ variant: "destructive", title: "Errore", description: error.message }); return; }
+    setRose((prev) => prev.map((r) => r.team_id === row.team_id ? { ...r, players: cleaned, orphans: [] } : r));
+    toast({ title: "Orfani rimossi", description: `${row.orphans.length} ID non validi rimossi.` });
+  }
 
-    if (error) {
-      toast({ variant: "destructive", title: "Errore", description: error.message });
-      return;
-    }
-
-    setRose((prev) =>
-      prev.map((r) =>
-        r.team_id === row.team_id ? { ...r, players: cleaned, orphans: [] } : r
-      )
-    );
-    toast({ title: "Orfani rimossi", description: `${row.orphans.length} player_id non validi rimossi dalla rosa di ${row.team_name}.` });
+  async function deleteMatchday(matchday: MatchdayRow) {
+    const supabase = createClient();
+    const { error } = await supabase.rpc("delete_matchday_safe", { p_matchday_id: matchday.id });
+    if (error) { toast({ variant: "destructive", title: "Errore", description: error.message }); return; }
+    setMatchdays((prev) => prev.filter((m) => m.id !== matchday.id));
+    toast({ title: "Giornata eliminata", description: matchday.name });
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
-  if (!league) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-muted-foreground">Lega non trovata.</p>
-        <Button onClick={() => router.push("/superadmin/leagues")}>Torna alla lista</Button>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+    </div>
+  );
+
+  if (!league) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <p className="text-muted-foreground">Lega non trovata.</p>
+      <Button onClick={() => router.push("/superadmin/leagues")}>Torna alla lista</Button>
+    </div>
+  );
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: "utenti", label: "Utenti", icon: Users },
@@ -244,18 +274,14 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
       <header className="sticky top-0 z-20 bg-stork-dark-card border-b border-stork-dark-border px-4 py-3">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <button
-              onClick={() => router.push("/superadmin/leagues")}
-              className="w-8 h-8 rounded-lg border border-stork-dark-border flex items-center justify-center hover:border-stork-orange/40 transition-colors shrink-0"
-            >
+            <button onClick={() => router.push("/superadmin/leagues")}
+              className="w-8 h-8 rounded-lg border border-stork-dark-border flex items-center justify-center hover:border-stork-orange/40 transition-colors shrink-0">
               <ArrowLeft className="w-4 h-4" />
             </button>
             <div className="min-w-0">
               <p className="font-black truncate">{league.name}</p>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[10px] text-muted-foreground bg-stork-dark px-1.5 py-0.5 rounded">
-                  {league.invite_code}
-                </span>
+                <span className="font-mono text-[10px] text-muted-foreground bg-stork-dark px-1.5 py-0.5 rounded">{league.invite_code}</span>
                 <Badge variant={league.is_active ? "success" : "secondary"} className="text-[10px]">
                   {league.is_active ? "Attiva" : "Inattiva"}
                 </Badge>
@@ -273,16 +299,11 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
       <div className="border-b border-stork-dark-border bg-stork-dark-card/50 sticky top-[61px] z-10">
         <div className="max-w-5xl mx-auto flex overflow-x-auto scrollbar-none px-4">
           {tabs.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
+            <button key={key} onClick={() => setTab(key)}
               className={cn(
                 "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 shrink-0 transition-colors",
-                tab === key
-                  ? "border-stork-orange text-stork-orange"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
+                tab === key ? "border-stork-orange text-stork-orange" : "border-transparent text-muted-foreground hover:text-foreground"
+              )}>
               <Icon className="w-4 h-4" />
               {label}
               {key === "rose" && rose.some((r) => r.orphans.length > 0) && (
@@ -307,23 +328,42 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
                 {members.length === 0 && <p className="text-muted-foreground text-center py-12">Nessun membro.</p>}
                 {members.map((m) => (
                   <div key={m.user_id} className="bg-stork-dark-card border border-stork-dark-border rounded-xl px-5 py-4">
-                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold">{m.manager_name}</span>
                           {m.is_admin && <Badge variant="outline" className="text-[10px] border-stork-gold text-stork-gold">Admin</Badge>}
                         </div>
                         <p className="text-sm text-muted-foreground">{m.team_name}</p>
-                        <p className="text-[11px] text-muted-foreground mt-1 font-mono">{m.user_id}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">{m.user_id}</p>
                       </div>
-                      <div className="flex gap-4 text-sm text-right">
+                      <div className="flex gap-3 text-sm text-right items-center">
                         <div>
                           <p className="font-bold text-stork-orange">{m.total_points}</p>
                           <p className="text-[10px] text-muted-foreground">punti</p>
                         </div>
+                        {/* Editable credits */}
                         <div>
-                          <p className="font-bold text-yellow-400">{m.credits}</p>
-                          <p className="text-[10px] text-muted-foreground">crediti</p>
+                          {editingCredits === m.user_id ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number" value={creditsValue}
+                                onChange={(e) => setCreditsValue(e.target.value)}
+                                className="w-20 h-7 text-xs text-center"
+                                autoFocus
+                              />
+                              <button onClick={() => saveCredits(m)} className="text-emerald-400 hover:text-emerald-300"><Check className="w-4 h-4" /></button>
+                              <button onClick={() => setEditingCredits(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                            </div>
+                          ) : (
+                            <button onClick={() => { setEditingCredits(m.user_id); setCreditsValue(String(m.credits)); }}
+                              className="group flex flex-col items-end hover:text-yellow-300 transition-colors">
+                              <span className="font-bold text-yellow-400 group-hover:text-yellow-300 flex items-center gap-1">
+                                {m.credits} <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100" />
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">crediti</span>
+                            </button>
+                          )}
                         </div>
                         <div>
                           <p className="font-bold text-blue-400">{m.player_count}</p>
@@ -331,9 +371,30 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
                         </div>
                       </div>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-2">
-                      Iscritto il {new Date(m.joined_at).toLocaleDateString("it-IT")}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-muted-foreground">
+                        Iscritto il {new Date(m.joined_at).toLocaleDateString("it-IT")}
+                      </p>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-400 hover:bg-red-500/10 h-7 px-2 text-xs">
+                            <UserMinus className="w-3.5 h-3.5 mr-1" /> Kick
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Rimuovere {m.manager_name}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              L&apos;utente verrà rimosso dalla lega. La sua rosa e i punti rimarranno nel database.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annulla</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => kickMember(m.user_id)} className="bg-destructive hover:bg-destructive/90">Rimuovi</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -344,26 +405,85 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground mb-4">{players.length} giocatori nella lega</p>
                 {players.length === 0 && <p className="text-muted-foreground text-center py-12">Nessun giocatore.</p>}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                <div className="space-y-2">
                   {players.map((p) => (
-                    <div
-                      key={p.id}
-                      className={cn(
-                        "bg-stork-dark-card border rounded-xl px-4 py-3",
-                        p.is_active ? "border-stork-dark-border" : "border-red-500/20 opacity-50"
+                    <div key={p.id} className={cn(
+                      "bg-stork-dark-card border rounded-xl px-4 py-3",
+                      p.is_active ? "border-stork-dark-border" : "border-red-500/20 opacity-60"
+                    )}>
+                      {editingPlayer === p.id ? (
+                        /* Edit form */
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <div className="col-span-2 space-y-1">
+                              <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Nome</label>
+                              <Input value={playerEdit.name ?? p.name}
+                                onChange={(e) => setPlayerEdit((prev) => ({ ...prev, name: e.target.value }))}
+                                className="h-8 text-sm" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Squadra</label>
+                              <Input value={playerEdit.team ?? p.team}
+                                onChange={(e) => setPlayerEdit((prev) => ({ ...prev, team: e.target.value }))}
+                                className="h-8 text-sm" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Prezzo SK</label>
+                              <Input type="number" value={playerEdit.price ?? p.price}
+                                onChange={(e) => setPlayerEdit((prev) => ({ ...prev, price: Number(e.target.value) }))}
+                                className="h-8 text-sm" />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <select value={playerEdit.role ?? p.role}
+                              onChange={(e) => setPlayerEdit((prev) => ({ ...prev, role: e.target.value }))}
+                              className="h-8 rounded-lg border border-stork-dark-border bg-muted px-2 text-sm">
+                              <option value="P">Portiere</option>
+                              <option value="M">Giocatore</option>
+                            </select>
+                            <Button size="sm" onClick={() => savePlayer(p)} className="h-8">
+                              <Check className="w-3.5 h-3.5 mr-1" /> Salva
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setEditingPlayer(null)} className="h-8">
+                              <X className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* View row */
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{p.name}</p>
+                            <p className="text-xs text-muted-foreground">{p.team} · <Badge variant="outline" className="text-[10px] py-0 px-1">{p.role}</Badge> · {p.price} SK</p>
+                            <p className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">{p.id}</p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-stork-orange"
+                              onClick={() => { setEditingPlayer(p.id); setPlayerEdit({}); }}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive hover:bg-destructive/10">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Eliminare {p.name}?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Il giocatore verrà eliminato dal database e rimosso da tutte le rose della lega.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deletePlayer(p)} className="bg-destructive hover:bg-destructive/90">Elimina</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
                       )}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm truncate">{p.name}</p>
-                          <p className="text-xs text-muted-foreground">{p.team}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <Badge variant="outline" className="text-[10px] mb-1">{p.role}</Badge>
-                          <p className="text-xs font-bold text-yellow-400">{p.price} SK</p>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground font-mono mt-1 truncate">{p.id}</p>
                     </div>
                   ))}
                 </div>
@@ -376,55 +496,68 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
                 {rose.some((r) => r.orphans.length > 0) && (
                   <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
-                    Trovati giocatori orfani (ID in rosa ma non nel database). Usa "Pulisci" per rimuoverli.
+                    Trovati giocatori orfani. Usa &quot;Pulisci&quot; per rimuoverli.
                   </div>
                 )}
                 {rose.length === 0 && <p className="text-muted-foreground text-center py-12">Nessuna rosa trovata.</p>}
                 {rose.map((r) => (
-                  <div
-                    key={r.team_id}
-                    className={cn(
-                      "bg-stork-dark-card border rounded-xl px-5 py-4",
-                      r.orphans.length > 0 ? "border-red-500/30" : "border-stork-dark-border"
-                    )}
-                  >
+                  <div key={r.team_id} className={cn(
+                    "bg-stork-dark-card border rounded-xl px-5 py-4",
+                    r.orphans.length > 0 ? "border-red-500/30" : "border-stork-dark-border"
+                  )}>
                     <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold">{r.manager_name}</span>
                           {r.orphans.length === 0 && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-                          {r.orphans.length > 0 && (
-                            <Badge variant="destructive" className="text-[10px]">
-                              {r.orphans.length} orfani
-                            </Badge>
-                          )}
+                          {r.orphans.length > 0 && <Badge variant="destructive" className="text-[10px]">{r.orphans.length} orfani</Badge>}
                         </div>
-                        <p className="text-sm text-muted-foreground">{r.team_name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{r.players.length} giocatori in rosa</p>
+                        <p className="text-sm text-muted-foreground">{r.team_name} · {r.players.length} giocatori</p>
                       </div>
                       {r.orphans.length > 0 && (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => cleanOrphans(r)}
-                          className="shrink-0"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 mr-1" />
-                          Pulisci orfani
+                        <Button size="sm" variant="destructive" onClick={() => cleanOrphans(r)}>
+                          <Trash2 className="w-3.5 h-3.5 mr-1" /> Pulisci orfani
                         </Button>
                       )}
                     </div>
 
-                    {r.orphans.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        <p className="text-xs font-semibold text-red-400 uppercase tracking-wide">ID orfani:</p>
-                        {r.orphans.map((oid) => (
-                          <p key={oid} className="text-xs font-mono text-red-300 bg-red-500/10 px-2 py-1 rounded">
-                            {oid}
-                          </p>
-                        ))}
-                      </div>
-                    )}
+                    {/* Player list */}
+                    <div className="space-y-1 mt-2">
+                      {r.players.map((pid) => {
+                        const isOrphan = r.orphans.includes(pid);
+                        const name = r.player_names[pid];
+                        return (
+                          <div key={pid} className={cn(
+                            "flex items-center justify-between px-3 py-1.5 rounded-lg text-xs",
+                            isOrphan ? "bg-red-500/10 text-red-400" : "bg-muted/40"
+                          )}>
+                            <span className="font-medium">{isOrphan ? "ORFANO" : name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-muted-foreground">{pid.slice(0, 8)}…</span>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <button className="hover:text-red-400 transition-colors">
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Rimuovere dalla rosa?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {isOrphan ? `ID orfano ${pid}` : `${name}`} verrà rimosso dalla rosa di {r.team_name}.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => removeFromRosa(r, pid)} className="bg-destructive hover:bg-destructive/90">Rimuovi</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -437,21 +570,37 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
                 {matchdays.length === 0 && <p className="text-muted-foreground text-center py-12">Nessuna giornata.</p>}
                 {matchdays.map((m) => (
                   <div key={m.id} className="bg-stork-dark-card border border-stork-dark-border rounded-xl px-5 py-4 flex items-center justify-between gap-3">
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-bold">{m.name}</p>
-                      <p className="text-xs text-muted-foreground font-mono mt-0.5">{m.id}</p>
+                      <p className="text-xs text-muted-foreground font-mono mt-0.5 truncate">{m.id}</p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
                         <p className="text-sm font-bold">{m.stat_count}</p>
                         <p className="text-[10px] text-muted-foreground">stats</p>
                       </div>
-                      <Badge
-                        variant={m.status === "calculated" ? "success" : m.status === "locked" ? "warning" : "secondary"}
-                        className="text-[10px]"
-                      >
+                      <Badge variant={m.status === "calculated" ? "success" : m.status === "locked" ? "warning" : "secondary"} className="text-[10px]">
                         {m.status}
                       </Badge>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive hover:bg-destructive/10">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Eliminare {m.name}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Verranno eliminati anche tutti i {m.stat_count} stats associati a questa giornata. Azione irreversibile.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annulla</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteMatchday(m)} className="bg-destructive hover:bg-destructive/90">Elimina</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 ))}
