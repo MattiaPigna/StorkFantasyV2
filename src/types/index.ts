@@ -70,6 +70,7 @@ export interface Profile {
   team_name: string;
   manager_name: string;
   is_admin: boolean;
+  is_super_admin?: boolean;
   avatar_url?: string;
   created_at: string;
 }

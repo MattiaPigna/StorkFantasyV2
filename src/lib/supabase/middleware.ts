@@ -35,6 +35,25 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Super admin route protection
+  if (pathname.startsWith("/superadmin") && pathname !== "/superadmin/login") {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/superadmin/login";
+      return NextResponse.redirect(url);
+    }
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_super_admin")
+      .eq("id", user.id)
+      .single();
+    if (!profile?.is_super_admin) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard/home";
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Redirect authenticated users away from landing page
   if (user && pathname === "/") {
     const { count } = await supabase
