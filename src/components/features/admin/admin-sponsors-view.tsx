@@ -96,7 +96,7 @@ export function AdminSponsorsView() {
                       <Badge variant="outline" className="text-xs">{SPONSOR_TYPE_LABELS[s.type]}</Badge>
                     </div>
                     {s.website_url && (
-                      <a href={s.website_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-stork-orange hover:underline">
+                      <a href={s.website_url.startsWith("http") ? s.website_url : `https://${s.website_url}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-stork-orange hover:underline">
                         <ExternalLink className="w-3 h-3" /> Sito web
                       </a>
                     )}

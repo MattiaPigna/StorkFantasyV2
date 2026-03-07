@@ -187,7 +187,7 @@ export function HomeView() {
           {sponsors.filter((s) => s.type === "main").length > 0 && (
             <div className="flex flex-wrap justify-center gap-4">
               {sponsors.filter((s) => s.type === "main").map((s) => (
-                <a key={s.id} href={s.website_url ?? undefined} target="_blank" rel="noopener noreferrer"
+                <a key={s.id} href={toAbsoluteUrl(s.website_url)} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-3 px-5 py-3 rounded-xl hover:bg-stork-dark/60 transition-all group">
                   {s.logo_url && <img src={s.logo_url} alt={s.name} className="h-10 w-auto object-contain" />}
                   <span className="font-bold text-foreground">{s.name}</span>
@@ -199,7 +199,7 @@ export function HomeView() {
           {sponsors.filter((s) => s.type !== "main").length > 0 && (
             <div className="flex flex-wrap justify-center gap-3">
               {sponsors.filter((s) => s.type !== "main").map((s) => (
-                <a key={s.id} href={s.website_url ?? undefined} target="_blank" rel="noopener noreferrer"
+                <a key={s.id} href={toAbsoluteUrl(s.website_url)} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-stork-dark/60 transition-all group">
                   {s.logo_url && <img src={s.logo_url} alt={s.name} className="h-6 w-auto object-contain" />}
                   <span className="text-sm font-semibold text-foreground">{s.name}</span>
@@ -213,6 +213,12 @@ export function HomeView() {
       )}
     </div>
   );
+}
+
+function toAbsoluteUrl(url: string | null): string | undefined {
+  if (!url) return undefined;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `https://${url}`;
 }
 
 function toYouTubeEmbed(url: string): string {
