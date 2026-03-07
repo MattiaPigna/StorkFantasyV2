@@ -180,7 +180,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Bottom nav Mobile only */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-stork-dark-card/95 backdrop-blur-md border-t border-stork-dark-border pb-safe" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 12px)" }}>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-stork-dark-card/95 backdrop-blur-md border-t border-stork-dark-border" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 12px)" }}>
         <div className="flex overflow-x-auto scrollbar-none">
           {[...navItems, { href: "/dashboard/profile", label: "Profilo", icon: User }].map((item) => {
             const active = pathname === item.href;
@@ -198,6 +198,25 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          {isAdmin && (
+            <Link
+              href="/admin/matchdays"
+              className={cn(
+                "flex-shrink-0 flex flex-col items-center gap-1.5 pt-3 pb-1 px-4 text-[11px] font-medium transition-all min-w-[68px]",
+                pathname.startsWith("/admin") ? "text-stork-gold" : "text-muted-foreground"
+              )}
+            >
+              <Shield className={cn("w-6 h-6", pathname.startsWith("/admin") && "drop-shadow-[0_0_8px_rgba(234,179,8,0.8)]")} />
+              <span className="truncate">Admin</span>
+            </Link>
+          )}
+          <button
+            onClick={handleLogout}
+            className="flex-shrink-0 flex flex-col items-center gap-1.5 pt-3 pb-1 px-4 text-[11px] font-medium text-muted-foreground hover:text-red-400 transition-all min-w-[68px]"
+          >
+            <LogOut className="w-6 h-6" />
+            <span className="truncate">Esci</span>
+          </button>
         </div>
       </nav>
     </div>
