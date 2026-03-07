@@ -67,10 +67,10 @@ export async function updatePlayer(id: string, updates: Partial<Player>): Promis
 export async function deletePlayer(id: string, leagueId: string): Promise<void> {
   const supabase = createClient();
 
-  // 1. Soft-delete the player
+  // 1. Hard delete the player
   const { error } = await supabase
     .from("players")
-    .update({ is_active: false })
+    .delete()
     .eq("id", id);
   if (error) throw new Error(error.message);
 
