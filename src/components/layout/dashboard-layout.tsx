@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, LayoutGrid, ShoppingCart, Trophy, BookOpen, CreditCard, LogOut, Shield, User, ChevronDown } from "lucide-react";
+import { Home, LayoutGrid, ShoppingCart, Trophy, BookOpen, CreditCard, LogOut, Shield, User, ChevronDown, Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ const navItems = [
   { href: "/dashboard/lineup", label: "Il Mio Campo", icon: LayoutGrid },
   { href: "/dashboard/market", label: "Mercato", icon: ShoppingCart },
   { href: "/dashboard/standings", label: "Classifica", icon: Trophy },
+  { href: "/dashboard/fixtures", label: "Partite", icon: Swords },
   { href: "/dashboard/rules", label: "Regole", icon: BookOpen },
   { href: "/dashboard/cards", label: "Card", icon: CreditCard },
 ];
