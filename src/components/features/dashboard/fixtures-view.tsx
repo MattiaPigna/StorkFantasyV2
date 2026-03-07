@@ -245,14 +245,17 @@ export function FixturesView() {
 
   useEffect(() => {
     if (!leagueId) return;
-    Promise.all([getDailyMatches(leagueId), getTournamentTeams(leagueId), getTopScorers(leagueId), getPlayers(leagueId)])
-      .then(([m, t, sc, pl]) => {
-        setMatches(m);
-        setTeams(t);
-        setAllPlayers(pl);
-        setTopScorers(sc.filter((s) => s.total_goals > 0 || s.total_assists > 0));
-      })
-      .finally(() => setIsLoading(false));
+    Promise.allSettled([
+      getDailyMatches(leagueId),
+      getTournamentTeams(leagueId),
+      getTopScorers(leagueId),
+      getPlayers(leagueId),
+    ]).then(([mRes, tRes, scRes, plRes]) => {
+      if (mRes.status === "fulfilled") setMatches(mRes.value);
+      if (tRes.status === "fulfilled") setTeams(tRes.value);
+      if (scRes.status === "fulfilled") setTopScorers(scRes.value.filter((s) => s.total_goals > 0 || s.total_assists > 0));
+      if (plRes.status === "fulfilled") setAllPlayers(plRes.value);
+    }).finally(() => setIsLoading(false));
   }, [leagueId]);
 
   if (isLoading) {
