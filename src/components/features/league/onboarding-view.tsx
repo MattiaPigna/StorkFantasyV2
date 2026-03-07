@@ -12,7 +12,6 @@ import { getMyTeam } from "@/lib/db/teams";
 import { getFantasyRules, getSpecialCards } from "@/lib/db/settings";
 import { getTournamentTeams } from "@/lib/db/tournament-teams";
 import { useLeagueStore } from "@/store/league";
-import { createClient } from "@/lib/supabase/client";
 import type { RuleEntry, SpecialCard } from "@/types";
 import type { TournamentTeam } from "@/lib/db/tournament-teams";
 import Image from "next/image";
