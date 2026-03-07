@@ -68,6 +68,28 @@ export async function getMatchdayStats(matchdayId: string): Promise<Record<strin
   return map;
 }
 
+export async function getPlayerAllStats(playerId: string): Promise<(PlayerMatchStats & { matchday_name: string; matchday_number: number })[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("player_match_stats")
+    .select("*, matchday:matchdays(name, number)")
+    .eq("player_id", playerId)
+    .not("fantasy_points", "is", null);
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? [])
+    .map((row) => {
+      const md = row.matchday as unknown as { name: string; number: number } | null;
+      return {
+        ...(row as PlayerMatchStats),
+        matchday_name: md?.name ?? "—",
+        matchday_number: md?.number ?? 0,
+      };
+    })
+    .sort((a, b) => a.matchday_number - b.matchday_number);
+}
+
 export async function deleteMatchday(id: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.rpc("delete_matchday_safe", { p_matchday_id: id });
