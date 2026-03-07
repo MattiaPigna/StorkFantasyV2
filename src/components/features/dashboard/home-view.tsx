@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Coins, Users, TrendingUp, Calendar, Tv, Star, ExternalLink, Building } from "lucide-react";
+import { Trophy, Coins, Users, TrendingUp, Calendar, Tv, Star, ExternalLink, Clock, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { getMyTeam, getProfile } from "@/lib/db/teams";
 import { getAppSettings, getSponsors } from "@/lib/db/settings";
 import { getMatchdays } from "@/lib/db/matchdays";
+import { getDailyMatches, type DailyMatch } from "@/lib/db/matches";
 import { useLeagueStore } from "@/store/league";
 import { formatPoints, formatCredits } from "@/lib/utils";
 import { SPONSOR_TYPE_LABELS } from "@/lib/constants";
+import Link from "next/link";
 import type { Profile, UserTeam, AppSettings, Matchday, Sponsor } from "@/types";
 
 export function HomeView() {
@@ -22,6 +24,7 @@ export function HomeView() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [lastMatchday, setLastMatchday] = useState<Matchday | null>(null);
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+  const [upcomingMatches, setUpcomingMatches] = useState<DailyMatch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -30,11 +33,12 @@ export function HomeView() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const [prof, set, matchdays, sps] = await Promise.all([
+      const [prof, set, matchdays, sps, allMatches] = await Promise.all([
         getProfile(user.id),
         getAppSettings(leagueId),
         getMatchdays(leagueId),
         getSponsors(leagueId),
+        getDailyMatches(leagueId).catch(() => [] as DailyMatch[]),
       ]);
       setProfile(prof);
       setSettings(set);
@@ -42,6 +46,15 @@ export function HomeView() {
       const calculated = matchdays.filter((m) => m.status === "calculated");
       if (calculated.length > 0) setLastMatchday(calculated[0]);
       if (prof) setTeam(await getMyTeam(user.id, leagueId));
+      // Keep today + future matches (up to 7 days out)
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const cutoff = new Date(todayStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const upcoming = allMatches.filter((m) => {
+        const d = new Date(m.match_datetime);
+        return d >= todayStart && d <= cutoff;
+      });
+      setUpcomingMatches(upcoming);
       setIsLoading(false);
     }
     load();
@@ -105,6 +118,8 @@ export function HomeView() {
           <span className="text-sm font-semibold text-foreground">{lastMatchday.name}</span>
         </div>
       )}
+
+      {upcomingMatches.length > 0 && <UpcomingMatchesWidget matches={upcomingMatches} />}
 
       {settings?.youtube_url && (
         <Card className="border-red-500/20 overflow-hidden">
@@ -181,6 +196,71 @@ export function HomeView() {
         </div>
       )}
     </div>
+  );
+}
+
+function UpcomingMatchesWidget({ matches }: { matches: DailyMatch[] }) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+  function dayLabel(dateStr: string) {
+    const d = new Date(dateStr);
+    d.setHours(0, 0, 0, 0);
+    if (d.getTime() === today.getTime()) return "Oggi";
+    if (d.getTime() === tomorrow.getTime()) return "Domani";
+    return d.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
+  }
+
+  // Group by day key
+  const groups = new Map<string, { label: string; ts: number; matches: DailyMatch[] }>();
+  for (const m of matches) {
+    const d = new Date(m.match_datetime);
+    d.setHours(0, 0, 0, 0);
+    const key = d.toISOString();
+    if (!groups.has(key)) groups.set(key, { label: dayLabel(m.match_datetime), ts: d.getTime(), matches: [] });
+    groups.get(key)!.matches.push(m);
+  }
+  const grouped = Array.from(groups.values()).sort((a, b) => a.ts - b.ts);
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Clock className="w-4 h-4 text-stork-orange" />
+            Prossime Partite
+          </CardTitle>
+          <Link href="/dashboard/fixtures" className="text-xs text-muted-foreground hover:text-stork-orange flex items-center gap-1 transition-colors">
+            Vedi tutte <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0 pb-2">
+        {grouped.map(({ label, matches: dayMatches }) => (
+          <div key={label}>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-5 pt-3 pb-1">{label}</p>
+            {dayMatches.map((m) => {
+              const time = new Date(m.match_datetime).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+              const hasResult = m.home_score !== null && m.away_score !== null;
+              return (
+                <div key={m.id} className="flex items-center gap-3 px-5 py-2.5 hover:bg-muted/40 transition-colors">
+                  <span className="text-xs font-bold text-stork-orange w-10 shrink-0">{time}</span>
+                  <span className="flex-1 text-sm font-medium text-right truncate">{m.home_team}</span>
+                  {hasResult ? (
+                    <span className="text-sm font-black tabular-nums shrink-0 px-1">{m.home_score}–{m.away_score}</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground font-bold shrink-0 px-1">VS</span>
+                  )}
+                  <span className="flex-1 text-sm font-medium truncate">{m.away_team}</span>
+                  <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:block">{m.competition}</span>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 
