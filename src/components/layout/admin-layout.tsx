@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Calendar, Users, UserCog, Star, CreditCard, Trophy, Building, Settings, LogOut, ArrowLeft, Shield } from "lucide-react";
+import { Calendar, Users, UserCog, Star, CreditCard, Trophy, Building, Settings, LogOut, ArrowLeft, Shield, Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +11,7 @@ import { useLeagueStore } from "@/store/league";
 const adminNavItems = [
   { href: "/admin/members", label: "Membri", icon: Users },
   { href: "/admin/matchdays", label: "Giornate", icon: Calendar },
+  { href: "/admin/matches", label: "Partite", icon: Swords },
   { href: "/admin/players", label: "Giocatori", icon: UserCog },
   { href: "/admin/rules", label: "Regole Punti", icon: Star },
   { href: "/admin/cards", label: "Card Speciali", icon: CreditCard },
