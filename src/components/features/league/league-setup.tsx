@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trophy, Users, Loader2, Plus } from "lucide-react";
+import { Trophy, Users, Loader2, Plus, LogOut, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -24,6 +24,14 @@ export function LeagueSetup() {
   const { setActiveLeague, setMyLeagues, myLeagues } = useLeagueStore();
   const { toast } = useToast();
   const router = useRouter();
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    useLeagueStore.getState().reset();
+    router.push("/");
+    router.refresh();
+  }
 
   useEffect(() => {
     async function checkAdmin() {
@@ -91,6 +99,22 @@ export function LeagueSetup() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-stork-orange/5 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Top bar */}
+      <div className="fixed top-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-10">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Indietro
+        </button>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-red-400 transition-colors"
+        >
+          <LogOut className="w-4 h-4" /> Esci
+        </button>
+      </div>
 
       <div className="w-full max-w-md space-y-6 animate-fade-in relative z-10">
         <div className="text-center">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trophy, BookOpen, Users, ShoppingCart, ArrowRight, Coins, TrendingUp, TrendingDown, Zap } from "lucide-react";
+import { Trophy, BookOpen, Users, ShoppingCart, ArrowRight, Coins, TrendingUp, TrendingDown, Zap, ArrowLeft, LogOut } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { getMyTeam } from "@/lib/db/teams";
 import { getFantasyRules, getSpecialCards } from "@/lib/db/settings";
 import { getTournamentTeams } from "@/lib/db/tournament-teams";
 import { useLeagueStore } from "@/store/league";
+import { createClient } from "@/lib/supabase/client";
 import type { RuleEntry, SpecialCard } from "@/types";
 import type { TournamentTeam } from "@/lib/db/tournament-teams";
 import Image from "next/image";
@@ -71,6 +72,14 @@ export function OnboardingView() {
     return () => clearInterval(interval);
   }, [tab, userId, leagueId]);
 
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    useLeagueStore.getState().reset();
+    router.push("/");
+    router.refresh();
+  }
+
   const bonusPartita = rules.filter((r) => r.type === "bonus" && r.category !== "spettacolo");
   const bonusSpettacolo = rules.filter((r) => r.type === "bonus" && r.category === "spettacolo");
   const malusPartita = rules.filter((r) => r.type === "malus" && r.category !== "spettacolo");
@@ -84,6 +93,22 @@ export function OnboardingView() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-4 py-3 bg-stork-dark-card border-b border-stork-dark-border">
+        <button
+          onClick={() => router.push("/league/setup")}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Cambia lega
+        </button>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-red-400 transition-colors"
+        >
+          <LogOut className="w-4 h-4" /> Esci
+        </button>
+      </div>
+
       {/* Header */}
       <div className="bg-stork-dark-card border-b border-stork-dark-border px-4 py-5">
         <div className="max-w-3xl mx-auto">
