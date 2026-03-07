@@ -103,7 +103,7 @@ export function LeagueSetup() {
       {/* Top bar */}
       <div className="fixed top-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-10">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push("/")}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Indietro
