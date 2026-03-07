@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Zap, Shield } from "lucide-react";
+import { Loader2, Zap, Shield, Mail, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
@@ -40,8 +40,9 @@ const PARTICLES = [
 ];
 
 export function LandingPage() {
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "forgot-password" | "email-sent">("login");
   const [isLoading, setIsLoading] = useState(false);
+  const [emailSentTo, setEmailSentTo] = useState("");
   const { toast } = useToast();
   const router = useRouter();
   const supabase = createClient();
@@ -69,7 +70,10 @@ export function LandingPage() {
       const { data: result, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
-        options: { data: { team_name: data.teamName, manager_name: data.managerName } },
+        options: {
+          data: { team_name: data.teamName, manager_name: data.managerName },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
       if (error) throw error;
       if (result.user && result.user.identities?.length === 0) {
@@ -77,11 +81,29 @@ export function LandingPage() {
         setMode("login");
         return;
       }
-      toast({ title: "Benvenuto nella StorkLeague!" });
-      router.push("/dashboard/home");
-      router.refresh();
+      setEmailSentTo(data.email);
+      setMode("email-sent");
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore registrazione" });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleForgotPassword(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const email = (e.currentTarget.elements.namedItem("email") as HTMLInputElement).value;
+    if (!email) return;
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      });
+      if (error) throw error;
+      setEmailSentTo(email);
+      setMode("email-sent");
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore nell'invio email" });
     } finally {
       setIsLoading(false);
     }
@@ -473,49 +495,57 @@ export function LandingPage() {
               <span className="sl-title text-2xl" style={{ color: '#fff' }}>StorkLeague</span>
             </div>
 
-            {/* Tab switcher */}
-            <div style={{
-              display: 'flex',
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 12,
-              padding: 4,
-              marginBottom: 28,
-              gap: 4,
-            }}>
-              {(["login", "signup"] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMode(m)}
-                  style={{
-                    flex: 1,
-                    padding: '9px 0',
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontFamily: "'DM Sans', sans-serif",
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.25s',
-                  }}
-                  className={mode === m ? "sl-tab-active" : "sl-tab-inactive"}
-                >
-                  {m === "login" ? "Accedi" : "Registrati"}
-                </button>
-              ))}
-            </div>
+            {/* Tab switcher — nascosto per forgot-password ed email-sent */}
+            {(mode === "login" || mode === "signup") && (
+              <div style={{
+                display: 'flex',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 12,
+                padding: 4,
+                marginBottom: 28,
+                gap: 4,
+              }}>
+                {(["login", "signup"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setMode(m)}
+                    style={{
+                      flex: 1,
+                      padding: '9px 0',
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontFamily: "'DM Sans', sans-serif",
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.25s',
+                    }}
+                    className={mode === m ? "sl-tab-active" : "sl-tab-inactive"}
+                  >
+                    {m === "login" ? "Accedi" : "Registrati"}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Heading */}
-            <div style={{ marginBottom: 24 }}>
-              <h3 className="sl-title" style={{ fontSize: 30, color: '#fff', lineHeight: 1, marginBottom: 6 }}>
-                {mode === "login" ? "Bentornato" : "Crea account"}
-              </h3>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
-                {mode === "login" ? "Inserisci le credenziali per accedere" : "Unisciti alla StorkLeague oggi"}
-              </p>
-            </div>
+            {mode !== "email-sent" && (
+              <div style={{ marginBottom: 24 }}>
+                <h3 className="sl-title" style={{ fontSize: 30, color: '#fff', lineHeight: 1, marginBottom: 6 }}>
+                  {mode === "login" && "Bentornato"}
+                  {mode === "signup" && "Crea account"}
+                  {mode === "forgot-password" && "Password dimenticata"}
+                </h3>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
+                  {mode === "login" && "Inserisci le credenziali per accedere"}
+                  {mode === "signup" && "Unisciti alla StorkLeague oggi"}
+                  {mode === "forgot-password" && "Ti manderemo un link per reimpostare la password"}
+                </p>
+              </div>
+            )}
 
             {/* Forms */}
-            {mode === "login" ? (
+            {mode === "login" && (
               <form onSubmit={loginForm.handleSubmit(handleLogin)} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.04em' }}>EMAIL</label>
@@ -523,7 +553,16 @@ export function LandingPage() {
                   {loginForm.formState.errors.email && <p style={{ fontSize: 11, color: '#f87171' }}>{loginForm.formState.errors.email.message}</p>}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.04em' }}>PASSWORD</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.04em' }}>PASSWORD</label>
+                    <button
+                      type="button"
+                      onClick={() => setMode("forgot-password")}
+                      style={{ fontSize: 11, color: '#f97316', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    >
+                      Password dimenticata?
+                    </button>
+                  </div>
                   <input className="sl-input" type="password" placeholder="••••••••" {...loginForm.register("password")} />
                   {loginForm.formState.errors.password && <p style={{ fontSize: 11, color: '#f87171' }}>{loginForm.formState.errors.password.message}</p>}
                 </div>
@@ -533,7 +572,9 @@ export function LandingPage() {
                   </button>
                 </div>
               </form>
-            ) : (
+            )}
+
+            {mode === "signup" && (
               <form onSubmit={signupForm.handleSubmit(handleSignup)} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -563,6 +604,64 @@ export function LandingPage() {
                   </button>
                 </div>
               </form>
+            )}
+
+            {mode === "forgot-password" && (
+              <form onSubmit={handleForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.04em' }}>EMAIL</label>
+                  <input name="email" className="sl-input" type="email" placeholder="la.tua@email.com" required />
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  <button type="submit" className="sl-btn" disabled={isLoading}>
+                    {isLoading ? <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Loader2 size={16} className="animate-spin" />Invio...</span> : "Invia link di recupero"}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMode("login")}
+                  style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 4 }}
+                >
+                  ← Torna al login
+                </button>
+              </form>
+            )}
+
+            {mode === "email-sent" && (
+              <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                <div style={{
+                  width: 64, height: 64,
+                  borderRadius: '50%',
+                  background: 'rgba(249,115,22,0.12)',
+                  border: '1px solid rgba(249,115,22,0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 20px',
+                }}>
+                  <Mail size={28} style={{ color: '#f97316' }} />
+                </div>
+                <h3 className="sl-title" style={{ fontSize: 28, color: '#fff', marginBottom: 10 }}>
+                  Controlla la email
+                </h3>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: 8 }}>
+                  Abbiamo inviato un link a
+                </p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#f97316', marginBottom: 20, wordBreak: 'break-all' }}>
+                  {emailSentTo}
+                </p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', lineHeight: 1.6, marginBottom: 24 }}>
+                  Clicca il link nella email per confermare il tuo account e accedere automaticamente.
+                  Controlla anche la cartella spam se non lo trovi.
+                </p>
+                <button
+                  onClick={() => setMode("login")}
+                  style={{
+                    fontSize: 13, color: '#f97316', background: 'none', border: '1px solid rgba(249,115,22,0.3)',
+                    borderRadius: 8, padding: '8px 20px', cursor: 'pointer', width: '100%',
+                  }}
+                >
+                  Torna al login
+                </button>
+              </div>
             )}
 
             {/* Footer */}
