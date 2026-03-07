@@ -256,6 +256,13 @@ export function FixturesView() {
       if (scRes.status === "fulfilled") setTopScorers(scRes.value.filter((s) => s.total_goals > 0 || s.total_assists > 0));
       if (plRes.status === "fulfilled") setAllPlayers(plRes.value);
     }).finally(() => setIsLoading(false));
+
+    // Refresh matches every 60s so scores and standings update automatically
+    const interval = setInterval(() => {
+      getDailyMatches(leagueId).then(setMatches).catch(() => {});
+    }, 60000);
+
+    return () => clearInterval(interval);
   }, [leagueId]);
 
   if (isLoading) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Coins, Users, TrendingUp, Calendar, Tv, Star, ExternalLink, Clock, ChevronRight } from "lucide-react";
+import { Trophy, Coins, Users, TrendingUp, Calendar, Tv, Star, ExternalLink, Clock, ChevronRight, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +76,24 @@ export function HomeView() {
       setIsLoading(false);
     }
     load();
+
+    // Refresh matches every 60s to pick up new scores
+    const interval = setInterval(async () => {
+      if (!leagueId) return;
+      try {
+        const allMatches = await getDailyMatches(leagueId).catch(() => [] as DailyMatch[]);
+        const now2 = new Date();
+        const todayStart2 = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate());
+        const yesterdayStart2 = new Date(todayStart2.getTime() - 24 * 60 * 60 * 1000);
+        const cutoff2 = new Date(todayStart2.getTime() + 7 * 24 * 60 * 60 * 1000);
+        setUpcomingMatches(allMatches.filter((m) => {
+          const d = new Date(m.match_datetime);
+          return d >= yesterdayStart2 && d <= cutoff2;
+        }));
+      } catch {}
+    }, 60000);
+
+    return () => clearInterval(interval);
   }, [leagueId]);
 
   if (isLoading) return (
@@ -136,7 +154,7 @@ export function HomeView() {
         </div>
       )}
 
-      {upcomingMatches.length > 0 && <UpcomingMatchesWidget matches={upcomingMatches} />}
+      {upcomingMatches.length > 0 && <UpcomingMatchesWidget matches={upcomingMatches} leagueId={leagueId} onRefresh={setUpcomingMatches} />}
 
       {settings?.youtube_url && (
         <Card className="border-red-500/20 overflow-hidden">
@@ -240,7 +258,22 @@ function toYouTubeEmbed(url: string): string {
   }
 }
 
-function UpcomingMatchesWidget({ matches }: { matches: DailyMatch[] }) {
+function UpcomingMatchesWidget({ matches, leagueId, onRefresh }: { matches: DailyMatch[]; leagueId: string; onRefresh: (m: DailyMatch[]) => void }) {
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      const all = await getDailyMatches(leagueId);
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+      const cutoff = new Date(todayStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+      onRefresh(all.filter((m) => { const d = new Date(m.match_datetime); return d >= yesterdayStart && d <= cutoff; }));
+    } catch {} finally {
+      setRefreshing(false);
+    }
+  }
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
@@ -270,11 +303,16 @@ function UpcomingMatchesWidget({ matches }: { matches: DailyMatch[] }) {
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Clock className="w-4 h-4 text-stork-orange" />
-            Prossime Partite
+            Partite
           </CardTitle>
-          <Link href="/dashboard/fixtures" className="text-xs text-muted-foreground hover:text-stork-orange flex items-center gap-1 transition-colors">
-            Vedi tutte <ChevronRight className="w-3 h-3" />
-          </Link>
+          <div className="flex items-center gap-2">
+            <button onClick={handleRefresh} disabled={refreshing} className="text-muted-foreground hover:text-stork-orange transition-colors">
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            </button>
+            <Link href="/dashboard/fixtures" className="text-xs text-muted-foreground hover:text-stork-orange flex items-center gap-1 transition-colors">
+              Vedi tutte <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0 pb-2">
