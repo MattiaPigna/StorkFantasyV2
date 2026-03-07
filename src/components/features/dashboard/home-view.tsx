@@ -63,13 +63,14 @@ export function HomeView() {
         const existingIds = new Set(allPlayers.map((p) => p.id));
         setMyPlayersCount((t?.players ?? []).filter((id) => existingIds.has(id)).length);
       }
-      // Keep today + future matches (up to 7 days out)
+      // Keep today (from midnight) + next 7 days. Also include yesterday so recent results show.
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
       const cutoff = new Date(todayStart.getTime() + 7 * 24 * 60 * 60 * 1000);
       const upcoming = allMatches.filter((m) => {
         const d = new Date(m.match_datetime);
-        return d >= todayStart && d <= cutoff;
+        return d >= yesterdayStart && d <= cutoff;
       });
       setUpcomingMatches(upcoming);
       setIsLoading(false);
