@@ -76,6 +76,9 @@ export function LeagueSetup() {
 
       const league = await createLeague(leagueName.trim(), user.id);
       await joinLeague(league.id, user.id);
+      // Mark creator as admin in their profile
+      const supabase2 = createClient();
+      await supabase2.from("profiles").update({ is_admin: true }).eq("id", user.id);
       setActiveLeague(league);
       setMyLeagues([...myLeagues, league]);
       toast({ title: `Lega "${league.name}" creata!`, description: `Codice invito: ${league.invite_code}` });
