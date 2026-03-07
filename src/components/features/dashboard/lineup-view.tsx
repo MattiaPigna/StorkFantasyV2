@@ -162,7 +162,7 @@ export function LineupView() {
       {/* ===== PITCH ROW ===== */}
       <div className="flex flex-col md:flex-row gap-5 items-start">
         {/* PITCH — max-width per restare compatto in portrait */}
-        <Card className="overflow-hidden border-emerald-900/30 w-full md:w-[440px] shrink-0">
+        <Card className="overflow-hidden border-emerald-900/30 w-full md:w-[440px] lg:w-[580px] xl:w-[660px] shrink-0">
           {/* Riquadro punteggio live */}
           {activeMatchday && (() => {
             const matchdayScore = team?.matchday_points?.[activeMatchday.id] ?? null;
