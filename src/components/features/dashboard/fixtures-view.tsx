@@ -280,31 +280,38 @@ export function FixturesView() {
 
       {/* ── SQUADRE PARTECIPANTI (sempre visibili) ── */}
       {teams.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-            <Users className="w-3.5 h-3.5" /> Squadre partecipanti
+            <Users className="w-3.5 h-3.5" /> Squadre partecipanti · {teams.length}
           </p>
-          <div className="flex flex-wrap gap-2">
-            {teams.map((team) => (
-              <button
-                key={team.id}
-                onClick={() => {
-                  const standing = standings.find((s) => s.team === team.name) ?? {
-                    team: team.name, logo_url: team.logo_url ?? null,
-                    played: 0, wins: 0, draws: 0, losses: 0, gf: 0, gs: 0, diff: 0, points: 0,
-                  };
-                  setSelectedTeam(standing);
-                }}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-stork-dark border border-stork-dark-border hover:border-stork-orange/40 hover:bg-stork-orange/5 transition-all"
-              >
-                {team.logo_url ? (
-                  <img src={team.logo_url} alt={team.name} className="w-6 h-6 object-contain rounded" />
-                ) : (
-                  <ShieldCheck className="w-4 h-4 text-muted-foreground/50" />
-                )}
-                <span className="text-sm font-semibold">{team.name}</span>
-              </button>
-            ))}
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+            {teams.map((team) => {
+              const standing = standings.find((s) => s.team === team.name);
+              return (
+                <button
+                  key={team.id}
+                  onClick={() => {
+                    setSelectedTeam(standing ?? {
+                      team: team.name, logo_url: team.logo_url ?? null,
+                      played: 0, wins: 0, draws: 0, losses: 0, gf: 0, gs: 0, diff: 0, points: 0,
+                    });
+                  }}
+                  className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-stork-dark border border-stork-dark-border hover:border-stork-orange/50 hover:bg-stork-orange/5 active:scale-95 transition-all group"
+                >
+                  {team.logo_url ? (
+                    <img src={team.logo_url} alt={team.name} className="w-14 h-14 object-contain rounded-xl" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-stork-orange/20 to-stork-gold/10 border border-stork-orange/20 flex items-center justify-center">
+                      <ShieldCheck className="w-7 h-7 text-stork-orange/60 group-hover:text-stork-orange transition-colors" />
+                    </div>
+                  )}
+                  <span className="text-xs font-bold text-center leading-tight line-clamp-2">{team.name}</span>
+                  {standing && (
+                    <span className="text-[10px] text-stork-orange font-black">{standing.points} pt</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
