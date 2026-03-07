@@ -142,7 +142,7 @@ export function HomeView() {
           <CardContent className="p-0">
             <div className="aspect-video bg-black rounded-b-xl overflow-hidden">
               <iframe
-                src={settings.youtube_url.replace("watch?v=", "embed/")}
+                src={toYouTubeEmbed(settings.youtube_url)}
                 title="Live Stream"
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -206,6 +206,24 @@ export function HomeView() {
       )}
     </div>
   );
+}
+
+function toYouTubeEmbed(url: string): string {
+  try {
+    const u = new URL(url);
+    let videoId = "";
+    if (u.hostname === "youtu.be") {
+      videoId = u.pathname.slice(1);
+    } else if (u.pathname.includes("/live/")) {
+      videoId = u.pathname.split("/live/")[1].split("/")[0];
+    } else {
+      videoId = u.searchParams.get("v") ?? "";
+    }
+    if (!videoId) return url;
+    return `https://www.youtube.com/embed/${videoId}?autoplay=0`;
+  } catch {
+    return url;
+  }
 }
 
 function UpcomingMatchesWidget({ matches }: { matches: DailyMatch[] }) {
