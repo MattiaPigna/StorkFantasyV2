@@ -4,6 +4,7 @@ export interface TournamentTeam {
   id: string;
   league_id: string;
   name: string;
+  logo_url: string | null;
   created_at: string;
 }
 
@@ -47,5 +48,35 @@ export async function deleteTournamentTeam(id: string): Promise<void> {
 export async function deleteAllTournamentTeams(leagueId: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("tournament_teams").delete().eq("league_id", leagueId);
+  if (error) throw new Error(error.message);
+}
+
+export async function uploadTeamLogo(teamId: string, file: File): Promise<string> {
+  const supabase = createClient();
+  const path = `${teamId}.webp`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("team-logos")
+    .upload(path, file, { upsert: true, contentType: "image/webp" });
+
+  if (uploadError) throw new Error(uploadError.message);
+
+  const { data } = supabase.storage.from("team-logos").getPublicUrl(path);
+
+  const { error: updateError } = await supabase
+    .from("tournament_teams")
+    .update({ logo_url: data.publicUrl })
+    .eq("id", teamId);
+
+  if (updateError) throw new Error(updateError.message);
+
+  return data.publicUrl;
+}
+
+export async function removeTeamLogo(teamId: string): Promise<void> {
+  const supabase = createClient();
+  const { error: storageError } = await supabase.storage.from("team-logos").remove([`${teamId}.webp`]);
+  if (storageError) throw new Error(storageError.message);
+  const { error } = await supabase.from("tournament_teams").update({ logo_url: null }).eq("id", teamId);
   if (error) throw new Error(error.message);
 }

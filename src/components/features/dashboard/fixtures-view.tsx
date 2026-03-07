@@ -364,15 +364,23 @@ export function FixturesView() {
           ) : (
             <>
               <p className="text-xs text-muted-foreground px-1">{teams.length} squadre partecipanti</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                 {teams.map((team, i) => (
                   <Card key={team.id} className="border-stork-dark-border hover:border-stork-orange/30 transition-all">
-                    <CardContent className="p-4 flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-stork-orange/20 to-stork-gold/10 border border-stork-orange/20 flex items-center justify-center shrink-0">
-                        <ShieldCheck className="w-4 h-4 text-stork-orange" />
-                      </div>
+                    <CardContent className="p-4 flex flex-col items-center gap-2 text-center">
+                      {team.logo_url ? (
+                        <img
+                          src={team.logo_url}
+                          alt={team.name}
+                          className="w-14 h-14 object-contain rounded-lg"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-stork-orange/20 to-stork-gold/10 border border-stork-orange/20 flex items-center justify-center">
+                          <ShieldCheck className="w-6 h-6 text-stork-orange" />
+                        </div>
+                      )}
                       <div>
-                        <p className="font-semibold text-sm">{team.name}</p>
+                        <p className="font-semibold text-sm leading-tight">{team.name}</p>
                         <p className="text-xs text-muted-foreground">#{i + 1}</p>
                       </div>
                     </CardContent>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Users, Plus, Trash2, Upload, FileJson, X, AlertTriangle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Users, Plus, Trash2, Upload, FileJson, X, AlertTriangle, ImagePlus, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,12 +11,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   getTournamentTeams, createTournamentTeam, createTournamentTeams,
-  deleteTournamentTeam, deleteAllTournamentTeams, type TournamentTeam,
+  deleteTournamentTeam, deleteAllTournamentTeams, uploadTeamLogo, removeTeamLogo,
+  type TournamentTeam,
 } from "@/lib/db/tournament-teams";
 import { useLeagueStore } from "@/store/league";
 import { useToast } from "@/hooks/use-toast";
 
-const JSON_EXAMPLE = `["Juventus", "Inter", "Milan", "Roma", "Napoli", "Lazio"]`;
+const JSON_EXAMPLE = `["Juventus", "Inter", "Milan", "Roma", "Napoli"]`;
 
 export function AdminTeamsView() {
   const { activeLeague } = useLeagueStore();
@@ -30,6 +31,10 @@ export function AdminTeamsView() {
   const [showJson, setShowJson] = useState(false);
   const [jsonText, setJsonText] = useState("");
   const [isImporting, setIsImporting] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+
+  // ref map for hidden file inputs per team
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     if (!leagueId) return;
@@ -73,13 +78,40 @@ export function AdminTeamsView() {
     }
   }
 
+  async function handleLogoUpload(team: TournamentTeam, file: File) {
+    if (!file.type.includes("webp") && !file.name.endsWith(".webp")) {
+      toast({ variant: "destructive", title: "Formato non valido", description: "Carica solo file .webp" });
+      return;
+    }
+    setUploadingId(team.id);
+    try {
+      const url = await uploadTeamLogo(team.id, file);
+      setTeams((prev) => prev.map((t) => t.id === team.id ? { ...t, logo_url: url } : t));
+      toast({ title: "Logo caricato!" });
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "Errore upload", description: err instanceof Error ? err.message : "Errore" });
+    } finally {
+      setUploadingId(null);
+    }
+  }
+
+  async function handleLogoRemove(team: TournamentTeam) {
+    try {
+      await removeTeamLogo(team.id);
+      setTeams((prev) => prev.map((t) => t.id === team.id ? { ...t, logo_url: null } : t));
+      toast({ title: "Logo rimosso" });
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });
+    }
+  }
+
   function parseTeamJson(text: string): string[] {
     const parsed = JSON.parse(text);
     if (!Array.isArray(parsed)) throw new Error("Il JSON deve essere un array");
     return parsed.map((item) => {
       if (typeof item === "string") return item.trim();
       if (typeof item === "object" && item !== null && "name" in item) return String(item.name).trim();
-      throw new Error("Formato non valido. Usa [\"Squadra1\", \"Squadra2\"] oppure [{\"name\": \"Squadra1\"}]");
+      throw new Error("Usa [\"Squadra1\", \"Squadra2\"] o [{\"name\": \"Squadra1\"}]");
     }).filter(Boolean);
   }
 
@@ -91,8 +123,7 @@ export function AdminTeamsView() {
       await createTournamentTeams(leagueId, names);
       const updated = await getTournamentTeams(leagueId);
       setTeams(updated);
-      setJsonText("");
-      setShowJson(false);
+      setJsonText(""); setShowJson(false);
       toast({ title: `${names.length} squadre importate!` });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore JSON", description: err instanceof Error ? err.message : "Formato non valido" });
@@ -105,10 +136,7 @@ export function AdminTeamsView() {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setJsonText(ev.target?.result as string);
-      setShowJson(true);
-    };
+    reader.onload = (ev) => { setJsonText(ev.target?.result as string); setShowJson(true); };
     reader.readAsText(file);
     e.target.value = "";
   }
@@ -123,9 +151,7 @@ export function AdminTeamsView() {
       {/* Aggiungi singola */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Aggiungi Squadra
-          </CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><Plus className="w-4 h-4" /> Aggiungi Squadra</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-3">
@@ -137,8 +163,7 @@ export function AdminTeamsView() {
               className="flex-1"
             />
             <Button onClick={handleAdd} disabled={isSaving || !newName.trim()}>
-              <Plus className="w-4 h-4" />
-              Aggiungi
+              <Plus className="w-4 h-4" /> Aggiungi
             </Button>
           </div>
         </CardContent>
@@ -147,9 +172,7 @@ export function AdminTeamsView() {
       {/* Import JSON */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileJson className="w-4 h-4" /> Importa da JSON
-          </CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><FileJson className="w-4 h-4" /> Importa da JSON</CardTitle>
           <CardDescription>Importa più squadre in una volta sola</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -164,21 +187,18 @@ export function AdminTeamsView() {
               <input type="file" accept=".json" className="hidden" onChange={handleFileImport} />
             </label>
           </div>
-
           {showJson && (
             <div className="space-y-3">
               <textarea
                 value={jsonText}
                 onChange={(e) => setJsonText(e.target.value)}
                 placeholder={JSON_EXAMPLE}
-                rows={5}
+                rows={4}
                 className="w-full bg-stork-dark border border-stork-dark-border rounded-lg p-3 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-stork-orange/50 resize-none"
               />
-              <div className="bg-stork-dark/60 border border-stork-dark-border rounded-lg p-3">
-                <p className="text-xs text-muted-foreground font-medium mb-1">Formato accettato:</p>
-                <pre className="text-xs text-stork-orange font-mono">{JSON_EXAMPLE}</pre>
-                <p className="text-xs text-muted-foreground mt-1">oppure: {`[{"name": "Juventus"}, {"name": "Inter"}]`}</p>
-              </div>
+              <pre className="text-xs text-stork-orange font-mono bg-stork-dark/60 border border-stork-dark-border rounded-lg p-3">
+                {JSON_EXAMPLE}
+              </pre>
               <div className="flex gap-2 justify-end">
                 <Button variant="ghost" size="sm" onClick={() => { setShowJson(false); setJsonText(""); }}>
                   <X className="w-4 h-4" /> Annulla
@@ -236,19 +256,78 @@ export function AdminTeamsView() {
                 <p className="text-sm">Nessuna squadra aggiunta</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              <div className="space-y-2">
                 {teams.map((team, i) => (
                   <div
                     key={team.id}
-                    className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-stork-dark border border-stork-dark-border group hover:border-stork-orange/30 transition-all"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-stork-dark border border-stork-dark-border hover:border-stork-orange/20 transition-all group"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-xs text-muted-foreground font-bold w-5 text-right shrink-0">{i + 1}</span>
-                      <span className="font-medium text-sm">{team.name}</span>
+                    {/* Numero */}
+                    <span className="text-xs text-muted-foreground font-bold w-5 text-right shrink-0">{i + 1}</span>
+
+                    {/* Logo preview / upload */}
+                    <div className="relative shrink-0">
+                      {team.logo_url ? (
+                        <div className="relative group/logo">
+                          <img
+                            src={team.logo_url}
+                            alt={team.name}
+                            className="w-10 h-10 rounded-lg object-contain bg-white/5 border border-stork-dark-border"
+                          />
+                          <button
+                            onClick={() => handleLogoRemove(team)}
+                            className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity"
+                          >
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => fileInputRefs.current[team.id]?.click()}
+                          disabled={uploadingId === team.id}
+                          className="w-10 h-10 rounded-lg border border-dashed border-stork-dark-border hover:border-stork-orange/50 bg-stork-dark/50 flex items-center justify-center transition-all hover:bg-stork-orange/5"
+                          title="Carica logo .webp"
+                        >
+                          {uploadingId === team.id ? (
+                            <Loader2 className="w-4 h-4 text-stork-orange animate-spin" />
+                          ) : (
+                            <ImagePlus className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </button>
+                      )}
+                      {/* Hidden file input per questa squadra */}
+                      <input
+                        type="file"
+                        accept=".webp,image/webp"
+                        className="hidden"
+                        ref={(el) => { fileInputRefs.current[team.id] = el; }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleLogoUpload(team, file);
+                          e.target.value = "";
+                        }}
+                      />
                     </div>
+
+                    {/* Nome */}
+                    <span className="font-medium text-sm flex-1">{team.name}</span>
+
+                    {/* Cambia logo (se già presente) */}
+                    {team.logo_url && (
+                      <button
+                        onClick={() => fileInputRefs.current[team.id]?.click()}
+                        disabled={uploadingId === team.id}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-muted-foreground hover:text-stork-orange flex items-center gap-1"
+                      >
+                        {uploadingId === team.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImagePlus className="w-3 h-3" />}
+                        Cambia
+                      </button>
+                    )}
+
+                    {/* Elimina */}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <button className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                        <button className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive ml-1">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </AlertDialogTrigger>
@@ -266,6 +345,9 @@ export function AdminTeamsView() {
                     </AlertDialog>
                   </div>
                 ))}
+                <p className="text-xs text-muted-foreground pt-2 px-1">
+                  Clicca sul riquadro puntinato per caricare un logo .webp (max consigliato 100×100px)
+                </p>
               </div>
             )}
           </CardContent>
