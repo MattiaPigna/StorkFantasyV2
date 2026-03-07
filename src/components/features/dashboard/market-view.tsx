@@ -100,13 +100,12 @@ export function MarketView() {
   async function handleSell(player: Player) {
     if (!team || !userId) return;
     setActionLoading(player.id);
-    const sellPrice = Math.floor(player.price * 0.75);
     try {
       await sellPlayer(team.id, player.id, player.price, team.players, team.credits);
       setTeam((prev) =>
-        prev ? { ...prev, players: prev.players.filter((id) => id !== player.id), credits: prev.credits + sellPrice } : prev
+        prev ? { ...prev, players: prev.players.filter((id) => id !== player.id), credits: prev.credits + player.price } : prev
       );
-      toast({ title: "Vendita completata!", description: `+${formatCredits(sellPrice)} accreditati.` });
+      toast({ title: "Vendita completata!", description: `+${formatCredits(player.price)} accreditati.` });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore durante la vendita" });
     } finally {
@@ -244,14 +243,14 @@ export function MarketView() {
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline" size="sm" disabled={loading || marketClosed}>
-                          Vendi (+{Math.floor(player.price * 0.75)} SK)
+                          Vendi (+{player.price} SK)
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Vendere {player.name}?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Riceverai {Math.floor(player.price * 0.75)} SK (75% del valore). L&apos;operazione non è reversibile.
+                            Riceverai {player.price} SK (prezzo intero). L&apos;operazione non è reversibile.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

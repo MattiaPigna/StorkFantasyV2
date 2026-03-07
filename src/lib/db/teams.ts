@@ -98,7 +98,7 @@ export async function sellPlayer(
     .from("user_teams")
     .update({
       players: currentPlayers.filter((id) => id !== playerId),
-      credits: currentCredits + Math.floor(price * 0.75),
+      credits: currentCredits + price,
     })
     .eq("id", teamId);
 
