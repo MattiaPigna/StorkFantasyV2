@@ -51,7 +51,7 @@ export async function joinLeague(leagueId: string, userId: string): Promise<void
   const supabase = createClient();
   const { error } = await supabase
     .from("league_members")
-    .insert({ league_id: leagueId, user_id: userId });
+    .upsert({ league_id: leagueId, user_id: userId }, { onConflict: "league_id,user_id", ignoreDuplicates: true });
 
   if (error) throw new Error(error.message);
 }
