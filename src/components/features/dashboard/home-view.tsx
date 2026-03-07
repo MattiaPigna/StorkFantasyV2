@@ -85,7 +85,6 @@ export function HomeView() {
 
   const myPoints = team?.total_points ?? 0;
   const myCredits = team?.credits ?? 0;
-  const myPlayersCount = team?.players.length ?? 0;
   const lastDayPoints = lastMatchday ? (team?.matchday_points?.[lastMatchday.id] ?? 0) : null;
 
   return (
