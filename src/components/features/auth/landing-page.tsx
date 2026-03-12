@@ -43,6 +43,7 @@ export function LandingPage() {
   const [mode, setMode] = useState<"login" | "signup" | "forgot-password" | "email-sent">("login");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSentTo, setEmailSentTo] = useState("");
+  const [emailSentFor, setEmailSentFor] = useState<"signup" | "recovery">("signup");
   const { toast } = useToast();
   const router = useRouter();
   const supabase = createClient();
@@ -81,6 +82,7 @@ export function LandingPage() {
         setMode("login");
         return;
       }
+      setEmailSentFor("signup");
       setEmailSentTo(data.email);
       setMode("email-sent");
     } catch (err: unknown) {
@@ -100,6 +102,7 @@ export function LandingPage() {
         redirectTo: `${window.location.origin}/auth/callback`,
       });
       if (error) throw error;
+      setEmailSentFor("recovery");
       setEmailSentTo(email);
       setMode("email-sent");
     } catch (err: unknown) {
@@ -640,17 +643,20 @@ export function LandingPage() {
                   <Mail size={28} style={{ color: '#f97316' }} />
                 </div>
                 <h3 className="sl-title" style={{ fontSize: 28, color: '#fff', marginBottom: 10 }}>
-                  Controlla la email
+                  {emailSentFor === "recovery" ? "Controlla la email" : "Controlla la email"}
                 </h3>
                 <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: 8 }}>
-                  Abbiamo inviato un link a
+                  {emailSentFor === "recovery"
+                    ? "Abbiamo inviato un link per reimpostare la password a"
+                    : "Abbiamo inviato un link di conferma a"}
                 </p>
                 <p style={{ fontSize: 14, fontWeight: 600, color: '#f97316', marginBottom: 20, wordBreak: 'break-all' }}>
                   {emailSentTo}
                 </p>
                 <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', lineHeight: 1.6, marginBottom: 24 }}>
-                  Clicca il link nella email per confermare il tuo account e accedere automaticamente.
-                  Controlla anche la cartella spam se non lo trovi.
+                  {emailSentFor === "recovery"
+                    ? "Clicca il link nella email per reimpostare la tua password. Controlla anche la cartella spam se non lo trovi."
+                    : "Clicca il link nella email per confermare il tuo account e accedere automaticamente. Controlla anche la cartella spam se non lo trovi."}
                 </p>
                 <button
                   onClick={() => setMode("login")}
