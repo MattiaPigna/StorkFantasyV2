@@ -6,6 +6,13 @@ export async function GET(request: NextRequest) {
   const token_hash = searchParams.get("token_hash");
   const code = searchParams.get("code");
 
+  // DEBUG TEMPORANEO - da rimuovere dopo il fix
+  const allParams: Record<string, string> = {};
+  searchParams.forEach((value, key) => { allParams[key] = value; });
+  if (Object.keys(allParams).length === 0 || (!code && !token_hash)) {
+    return NextResponse.redirect(`${origin}/?debug_params=${encodeURIComponent(JSON.stringify(allParams))}`);
+  }
+
   const supabase = await createClient();
 
   // PKCE flow
