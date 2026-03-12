@@ -99,7 +99,7 @@ export function LandingPage() {
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+        redirectTo: `${window.location.origin}/auth/recovery-callback`,
       });
       if (error) throw error;
       setEmailSentFor("recovery");
