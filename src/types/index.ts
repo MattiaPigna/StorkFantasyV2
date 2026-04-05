@@ -155,8 +155,10 @@ export interface TournamentRules {
 
 export interface MarketListing {
   id: string;
+  league_id: string;
   player_id: string;
   seller_id: string;
+  seller_team_id: string;
   price: number;
   created_at: string;
   player?: Player;

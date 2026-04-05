@@ -17,6 +17,19 @@ import { SPONSOR_TYPE_LABELS } from "@/lib/constants";
 import Link from "next/link";
 import type { Profile, UserTeam, AppSettings, Matchday, Sponsor } from "@/types";
 
+// ---------------------------------------------------------------------------
+// Shared filter: show yesterday + all future matches
+// ---------------------------------------------------------------------------
+function filterUpcomingMatches(matches: DailyMatch[]): DailyMatch[] {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+  return matches.filter((m) => new Date(m.match_datetime) >= yesterdayStart);
+}
+
+// ---------------------------------------------------------------------------
+// HomeView
+// ---------------------------------------------------------------------------
 export function HomeView() {
   const { activeLeague } = useLeagueStore();
   const leagueId = activeLeague?.id ?? "";
@@ -33,8 +46,10 @@ export function HomeView() {
 
   useEffect(() => {
     if (!leagueId) return;
+
+    const supabase = createClient();
+
     async function load() {
-      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const [prof, set, matchdays, sps, allMatches] = await Promise.all([
@@ -59,33 +74,36 @@ export function HomeView() {
           return;
         }
         setTeam(t);
-        // Count only players that actually exist in the DB (filter out deleted ones)
         const existingIds = new Set(allPlayers.map((p) => p.id));
         setMyPlayersCount((t?.players ?? []).filter((id) => existingIds.has(id)).length);
       }
-      // Show yesterday + all future matches (no upper limit)
-      const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
-      const upcoming = allMatches.filter((m) => new Date(m.match_datetime) >= yesterdayStart);
-      setUpcomingMatches(upcoming);
+      setUpcomingMatches(filterUpcomingMatches(allMatches));
       setIsLoading(false);
     }
     load();
 
-    // Refresh matches every 60s to pick up new scores
-    const interval = setInterval(async () => {
-      if (!leagueId) return;
-      try {
-        const allMatches = await getDailyMatches(leagueId).catch(() => [] as DailyMatch[]);
-        const now2 = new Date();
-        const todayStart2 = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate());
-        const yesterdayStart2 = new Date(todayStart2.getTime() - 24 * 60 * 60 * 1000);
-        setUpcomingMatches(allMatches.filter((m) => new Date(m.match_datetime) >= yesterdayStart2));
-      } catch {}
-    }, 60000);
+    // Supabase Realtime: react to score updates/inserts/deletes in real time
+    const channel = supabase
+      .channel(`daily_matches_${leagueId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_matches", filter: `league_id=eq.${leagueId}` },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const m = payload.new as DailyMatch;
+            setUpcomingMatches((prev) => filterUpcomingMatches([...prev, m]));
+          } else if (payload.eventType === "UPDATE") {
+            const updated = payload.new as DailyMatch;
+            setUpcomingMatches((prev) => prev.map((m) => m.id === updated.id ? updated : m));
+          } else if (payload.eventType === "DELETE") {
+            const deleted = payload.old as { id: string };
+            setUpcomingMatches((prev) => prev.filter((m) => m.id !== deleted.id));
+          }
+        }
+      )
+      .subscribe();
 
-    return () => clearInterval(interval);
+    return () => { supabase.removeChannel(channel); };
   }, [leagueId]);
 
   if (isLoading) return (
@@ -146,7 +164,13 @@ export function HomeView() {
         </div>
       )}
 
-      {upcomingMatches.length > 0 && <UpcomingMatchesWidget matches={upcomingMatches} leagueId={leagueId} onRefresh={setUpcomingMatches} />}
+      {upcomingMatches.length > 0 && (
+        <UpcomingMatchesWidget
+          matches={upcomingMatches}
+          leagueId={leagueId}
+          onRefresh={setUpcomingMatches}
+        />
+      )}
 
       {settings?.youtube_url && (
         <Card className="border-red-500/20 overflow-hidden">
@@ -226,6 +250,10 @@ export function HomeView() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function toAbsoluteUrl(url: string | null): string | undefined {
   if (!url) return undefined;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
@@ -250,21 +278,31 @@ function toYouTubeEmbed(url: string): string {
   }
 }
 
-function UpcomingMatchesWidget({ matches, leagueId, onRefresh }: { matches: DailyMatch[]; leagueId: string; onRefresh: (m: DailyMatch[]) => void }) {
+// ---------------------------------------------------------------------------
+// UpcomingMatchesWidget
+// ---------------------------------------------------------------------------
+
+function UpcomingMatchesWidget({
+  matches,
+  leagueId,
+  onRefresh,
+}: {
+  matches: DailyMatch[];
+  leagueId: string;
+  onRefresh: (m: DailyMatch[]) => void;
+}) {
   const [refreshing, setRefreshing] = useState(false);
 
   async function handleRefresh() {
     setRefreshing(true);
     try {
       const all = await getDailyMatches(leagueId);
-      const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
-      onRefresh(all.filter((m) => new Date(m.match_datetime) >= yesterdayStart));
+      onRefresh(filterUpcomingMatches(all));
     } catch {} finally {
       setRefreshing(false);
     }
   }
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
@@ -277,7 +315,6 @@ function UpcomingMatchesWidget({ matches, leagueId, onRefresh }: { matches: Dail
     return d.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
   }
 
-  // Group by day key
   const groups = new Map<string, { label: string; ts: number; matches: DailyMatch[] }>();
   for (const m of matches) {
     const d = new Date(m.match_datetime);
@@ -333,6 +370,10 @@ function UpcomingMatchesWidget({ matches, leagueId, onRefresh }: { matches: Dail
     </Card>
   );
 }
+
+// ---------------------------------------------------------------------------
+// StatCard
+// ---------------------------------------------------------------------------
 
 function StatCard({ icon: Icon, label, value, color, bg, border, accent, glow }: {
   icon: React.ElementType; label: string; value: string;
