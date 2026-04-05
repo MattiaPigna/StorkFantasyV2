@@ -39,6 +39,7 @@ export function HomeView() {
   const [team, setTeam] = useState<UserTeam | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [lastMatchday, setLastMatchday] = useState<Matchday | null>(null);
+  const [allMatchdays, setAllMatchdays] = useState<Matchday[]>([]);
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<DailyMatch[]>([]);
   const [myPlayersCount, setMyPlayersCount] = useState(0);
@@ -62,6 +63,7 @@ export function HomeView() {
       setProfile(prof);
       setSettings(set);
       setSponsors(sps);
+      setAllMatchdays(matchdays);
       const calculated = matchdays.filter((m) => m.status === "calculated");
       if (calculated.length > 0) setLastMatchday(calculated[0]);
       if (prof) {
@@ -204,14 +206,21 @@ export function HomeView() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {Object.entries(team.matchday_points).slice(0, 6).map(([dayId, pts], i) => (
-              <div key={dayId} className={`flex justify-between items-center px-5 py-3 ${i % 2 === 0 ? "bg-stork-dark/50" : ""}`}>
-                <span className="text-sm text-muted-foreground">Giornata {i + 1}</span>
-                <span className={`text-sm font-bold ${(pts as number) > 0 ? "text-stork-orange" : "text-muted-foreground"}`}>
-                  {formatPoints(pts as number)} pt
-                </span>
-              </div>
-            ))}
+            {Object.entries(team.matchday_points)
+              .map(([dayId, pts]) => {
+                const md = allMatchdays.find((m) => m.id === dayId);
+                return { dayId, pts: pts as number, number: md?.number ?? 0, name: md?.name ?? dayId };
+              })
+              .sort((a, b) => a.number - b.number)
+              .slice(0, 6)
+              .map(({ dayId, pts, name }, i) => (
+                <div key={dayId} className={`flex justify-between items-center px-5 py-3 ${i % 2 === 0 ? "bg-stork-dark/50" : ""}`}>
+                  <span className="text-sm text-muted-foreground">{name}</span>
+                  <span className={`text-sm font-bold ${pts > 0 ? "text-stork-orange" : "text-muted-foreground"}`}>
+                    {formatPoints(pts)} pt
+                  </span>
+                </div>
+              ))}
           </CardContent>
         </Card>
       )}

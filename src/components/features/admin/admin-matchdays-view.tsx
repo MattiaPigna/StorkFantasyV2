@@ -11,7 +11,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { getMatchdays, createMatchday, savePlayerStats, calculateMatchdayResults, deleteMatchday } from "@/lib/db/matchdays";
+import { getMatchdays, createMatchday, savePlayerStats, calculateMatchdayResults, deleteMatchday, getMatchdayStats } from "@/lib/db/matchdays";
 import { getPlayers } from "@/lib/db/players";
 import { useLeagueStore } from "@/store/league";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +37,14 @@ export function AdminMatchdaysView() {
       .then(([m, p]) => { setMatchdays(m); setPlayers(p); })
       .finally(() => setIsLoading(false));
   }, [leagueId]);
+
+  // Preload existing stats whenever a matchday is expanded
+  useEffect(() => {
+    if (!expandedId) { setStats({}); return; }
+    getMatchdayStats(expandedId)
+      .then((existing) => setStats(existing as Record<string, Partial<PlayerMatchStats>>))
+      .catch(() => setStats({}));
+  }, [expandedId]);
 
   async function handleCreate() {
     if (!leagueId) {

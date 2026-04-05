@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { MarqueeBanner } from "@/components/features/marquee-banner";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getAppSettings } from "@/lib/db/settings";
 import { getMyLeagues } from "@/lib/db/leagues";
 import { useLeagueStore } from "@/store/league";
@@ -30,6 +30,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const { activeLeague, myLeagues, setActiveLeague, setMyLeagues } = useLeagueStore();
   const [showLeaguePicker, setShowLeaguePicker] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showLeaguePicker) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowLeaguePicker(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showLeaguePicker]);
 
   useEffect(() => {
     async function init() {
@@ -98,7 +110,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
           {/* League switcher */}
           {myLeagues.length > 1 && (
-            <div className="relative">
+            <div className="relative" ref={pickerRef}>
               <button
                 onClick={() => setShowLeaguePicker(!showLeaguePicker)}
                 className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-stork-dark border border-stork-dark-border text-xs text-muted-foreground hover:text-foreground transition-all"
