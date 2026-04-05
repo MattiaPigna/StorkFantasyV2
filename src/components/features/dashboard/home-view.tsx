@@ -12,7 +12,7 @@ import { getAppSettings, getSponsors } from "@/lib/db/settings";
 import { getMatchdays } from "@/lib/db/matchdays";
 import { getDailyMatches, type DailyMatch } from "@/lib/db/matches";
 import { useLeagueStore } from "@/store/league";
-import { formatPoints, formatCredits } from "@/lib/utils";
+import { formatPoints, formatCredits, isMarketOpen } from "@/lib/utils";
 import { SPONSOR_TYPE_LABELS } from "@/lib/constants";
 import Link from "next/link";
 import type { Profile, UserTeam, AppSettings, Matchday, Sponsor } from "@/types";
@@ -31,7 +31,7 @@ function filterUpcomingMatches(matches: DailyMatch[]): DailyMatch[] {
 // HomeView
 // ---------------------------------------------------------------------------
 export function HomeView() {
-  const { activeLeague } = useLeagueStore();
+  const { activeLeague, appSettings: storeSettings, setAppSettings } = useLeagueStore();
   const leagueId = activeLeague?.id ?? "";
   const router = useRouter();
 
@@ -53,13 +53,15 @@ export function HomeView() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      const cached = useLeagueStore.getState().appSettings;
       const [prof, set, matchdays, sps, allMatches] = await Promise.all([
         getProfile(user.id),
-        getAppSettings(leagueId),
+        cached ? Promise.resolve(cached) : getAppSettings(leagueId),
         getMatchdays(leagueId),
         getSponsors(leagueId),
         getDailyMatches(leagueId).catch(() => [] as DailyMatch[]),
       ]);
+      if (!cached && set) useLeagueStore.getState().setAppSettings(set);
       setProfile(prof);
       setSettings(set);
       setSponsors(sps);
@@ -132,9 +134,9 @@ export function HomeView() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
-          <Badge variant={settings?.market_open ? "success" : "secondary"} className="gap-1">
-            <span className={`w-1.5 h-1.5 rounded-full ${settings?.market_open ? "bg-emerald-400" : "bg-muted-foreground"}`} />
-            {settings?.market_open ? "Mercato Aperto" : "Mercato Chiuso"}
+          <Badge variant={isMarketOpen(settings) ? "success" : "secondary"} className="gap-1">
+            <span className={`w-1.5 h-1.5 rounded-full ${isMarketOpen(settings) ? "bg-emerald-400" : "bg-muted-foreground"}`} />
+            {isMarketOpen(settings) ? "Mercato Aperto" : "Mercato Chiuso"}
           </Badge>
           <Badge variant={settings?.lineup_locked ? "warning" : "success"} className="gap-1">
             <span className={`w-1.5 h-1.5 rounded-full ${settings?.lineup_locked ? "bg-stork-gold" : "bg-emerald-400"}`} />

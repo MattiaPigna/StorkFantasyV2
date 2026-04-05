@@ -28,7 +28,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const { activeLeague, myLeagues, setActiveLeague, setMyLeagues } = useLeagueStore();
+  const { activeLeague, myLeagues, setActiveLeague, setMyLeagues, setAppSettings } = useLeagueStore();
   const [showLeaguePicker, setShowLeaguePicker] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -73,9 +73,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       const { data: profile } = await supabase.from("profiles").select("is_admin").eq("id", user.id).single();
       setIsAdmin(profile?.is_admin ?? false);
 
-      // Load settings for active league
+      // Load settings for active league and share via store
       if (activeLeague) {
-        getAppSettings(activeLeague.id).then(setSettings).catch(() => null);
+        getAppSettings(activeLeague.id).then((s) => {
+          setSettings(s);
+          setAppSettings(s);
+        }).catch(() => null);
       }
     }
     init();

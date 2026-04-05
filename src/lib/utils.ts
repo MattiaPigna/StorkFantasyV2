@@ -40,6 +40,12 @@ export function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+export function isMarketOpen(settings: { market_open?: boolean; market_deadline?: string | null } | null | undefined): boolean {
+  if (!settings?.market_open) return false;
+  if (settings.market_deadline && new Date(settings.market_deadline) < new Date()) return false;
+  return true;
+}
+
 export function sanitizeFileName(name: string): string {
   return name
     .toLowerCase()

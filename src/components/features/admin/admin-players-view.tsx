@@ -14,7 +14,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { getAllPlayers, createPlayer, deletePlayer } from "@/lib/db/players";
+import { getAllPlayers, createPlayer, deletePlayer, updatePlayer } from "@/lib/db/players";
 import { getTournamentTeams, type TournamentTeam } from "@/lib/db/tournament-teams";
 import { useLeagueStore } from "@/store/league";
 import { PLAYER_ROLE_LABELS, PLAYER_ROLE_COLORS } from "@/lib/constants";
@@ -39,6 +39,8 @@ export function AdminPlayersView() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingPrice, setEditingPrice] = useState<string>("");
   const { toast } = useToast();
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<PlayerForm>({
@@ -111,6 +113,22 @@ export function AdminPlayersView() {
       toast({ variant: "destructive", title: "Errore importazione", description: err instanceof Error ? err.message : "JSON non valido" });
     } finally {
       setIsImporting(false);
+    }
+  }
+
+  async function handleUpdatePrice(player: Player) {
+    const price = parseInt(editingPrice, 10);
+    if (isNaN(price) || price < 1 || price > 100) {
+      toast({ variant: "destructive", title: "Prezzo non valido", description: "Deve essere tra 1 e 100 SK" });
+      return;
+    }
+    try {
+      const updated = await updatePlayer(player.id, { price });
+      setPlayers((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+      setEditingId(null);
+      toast({ title: "Prezzo aggiornato!" });
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });
     }
   }
 
@@ -223,9 +241,36 @@ export function AdminPlayersView() {
                       key={player.id}
                       className={`flex items-center justify-between px-3 py-2 rounded-lg bg-muted ${!player.is_active ? "opacity-40" : ""}`}
                     >
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{player.name}</p>
-                        <p className="text-xs text-muted-foreground">{player.team} · {player.price} SK</p>
+                        {editingId === player.id ? (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <input
+                              type="number"
+                              min={1}
+                              max={100}
+                              autoFocus
+                              value={editingPrice}
+                              onChange={(e) => setEditingPrice(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleUpdatePrice(player);
+                                if (e.key === "Escape") setEditingId(null);
+                              }}
+                              className="w-14 h-5 text-xs text-center bg-stork-dark border border-stork-orange/50 rounded px-1 outline-none"
+                            />
+                            <span className="text-xs text-muted-foreground">SK</span>
+                            <button onClick={() => handleUpdatePrice(player)} className="text-xs text-stork-orange font-bold hover:text-stork-orange/80">✓</button>
+                            <button onClick={() => setEditingId(null)} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setEditingId(player.id); setEditingPrice(player.price.toString()); }}
+                            className="text-xs text-muted-foreground hover:text-stork-orange transition-colors"
+                            title="Clicca per modificare il prezzo"
+                          >
+                            {player.team} · {player.price} SK
+                          </button>
+                        )}
                       </div>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

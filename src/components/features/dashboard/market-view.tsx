@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { ShoppingCart, Search, Filter, Coins, Check, X, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import { getPlayers } from "@/lib/db/players";
 import { getMyTeam, buyPlayer, sellPlayer } from "@/lib/db/teams";
 import { getAppSettings } from "@/lib/db/settings";
 import { useLeagueStore } from "@/store/league";
-import { formatCredits } from "@/lib/utils";
+import { formatCredits, isMarketOpen } from "@/lib/utils";
 import { PLAYER_ROLE_LABELS, PLAYER_ROLE_COLORS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -26,7 +27,7 @@ type SortPrice = "none" | "asc" | "desc";
 
 const PAGE_SIZE = 20;
 
-export function MarketView() {
+export function MarketView({ onTeamChange }: { onTeamChange?: (team: UserTeam) => void } = {}) {
   const { activeLeague } = useLeagueStore();
   const leagueId = activeLeague?.id ?? "";
 
@@ -50,11 +51,13 @@ export function MarketView() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserId(user.id);
+      const cached = useLeagueStore.getState().appSettings;
       const [pl, t, s] = await Promise.all([
         getPlayers(leagueId),
         getMyTeam(user.id, leagueId),
-        getAppSettings(leagueId),
+        cached ? Promise.resolve(cached) : getAppSettings(leagueId),
       ]);
+      if (!cached && s) useLeagueStore.getState().setAppSettings(s);
       setPlayers(pl);
       setTeam(t);
       setSettings(s);
@@ -90,9 +93,9 @@ export function MarketView() {
     setActionLoading(player.id);
     try {
       await buyPlayer(team.id, player.id, player.price, team.players, team.credits);
-      setTeam((prev) =>
-        prev ? { ...prev, players: [...prev.players, player.id], credits: prev.credits - player.price } : prev
-      );
+      const updated: UserTeam = { ...team, players: [...team.players, player.id], credits: team.credits - player.price };
+      setTeam(updated);
+      onTeamChange?.(updated);
       toast({ title: "Acquisto completato!", description: `${player.name} è nella tua rosa.` });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore durante l'acquisto" });
@@ -106,17 +109,16 @@ export function MarketView() {
     setActionLoading(player.id);
     try {
       await sellPlayer(team.id, player.id, player.price, team.players, team.credits, team.lineup ?? []);
-      setTeam((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          players: prev.players.filter((id) => id !== player.id),
-          credits: prev.credits + player.price,
-          lineup: (prev.lineup ?? []).map((slot) =>
-            slot.player_id === player.id ? { ...slot, player_id: null } : slot
-          ),
-        };
-      });
+      const updated: UserTeam = {
+        ...team,
+        players: team.players.filter((id) => id !== player.id),
+        credits: team.credits + player.price,
+        lineup: (team.lineup ?? []).map((slot) =>
+          slot.player_id === player.id ? { ...slot, player_id: null } : slot
+        ),
+      };
+      setTeam(updated);
+      onTeamChange?.(updated);
       toast({ title: "Vendita completata!", description: `+${formatCredits(player.price)} accreditati.` });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore durante la vendita" });
@@ -133,7 +135,7 @@ export function MarketView() {
     );
   }
 
-  const marketClosed = !settings?.market_open;
+  const marketClosed = !isMarketOpen(settings);
 
   return (
     <div className="p-4 lg:p-8 space-y-5 animate-fade-in">

@@ -12,7 +12,7 @@ import { getMyTeam } from "@/lib/db/teams";
 import { getFantasyRules, getSpecialCards } from "@/lib/db/settings";
 import { getTournamentTeams } from "@/lib/db/tournament-teams";
 import { useLeagueStore } from "@/store/league";
-import type { RuleEntry, SpecialCard } from "@/types";
+import type { RuleEntry, SpecialCard, UserTeam } from "@/types";
 import type { TournamentTeam } from "@/lib/db/tournament-teams";
 import Image from "next/image";
 
@@ -60,16 +60,10 @@ export function OnboardingView() {
     load();
   }, [leagueId]);
 
-  // Poll player count when on mercato tab so bar updates in real time
-  useEffect(() => {
-    if (tab !== "mercato" || !userId || !leagueId) return;
-    const interval = setInterval(async () => {
-      const team = await getMyTeam(userId, leagueId).catch(() => null);
-      setPlayerCount(team?.players?.length ?? 0);
-      setCredits(team?.credits ?? 0);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [tab, userId, leagueId]);
+  function handleTeamChange(team: UserTeam) {
+    setPlayerCount(team.players?.length ?? 0);
+    setCredits(team.credits ?? 0);
+  }
 
   async function handleLogout() {
     const supabase = createClient();
@@ -243,7 +237,7 @@ export function OnboardingView() {
           </div>
         )}
 
-        {tab === "mercato" && <MarketView />}
+        {tab === "mercato" && <MarketView onTeamChange={handleTeamChange} />}
       </div>
 
       {/* Sticky bottom bar */}

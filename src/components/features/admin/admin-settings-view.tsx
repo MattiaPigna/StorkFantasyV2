@@ -82,7 +82,17 @@ export function AdminSettingsView() {
 
   useEffect(() => {
     if (!leagueId) return;
-    getAppSettings(leagueId).then((s) => { if (s) setSettings(s); }).finally(() => setIsLoading(false));
+    getAppSettings(leagueId).then((s) => {
+      if (!s) return;
+      // Auto-close market if the deadline has already passed
+      if (s.market_open && s.market_deadline && new Date(s.market_deadline) < new Date()) {
+        const patched = { ...s, market_open: false };
+        setSettings(patched);
+        updateAppSettings(leagueId, { market_open: false }).catch(() => null);
+      } else {
+        setSettings(s);
+      }
+    }).finally(() => setIsLoading(false));
   }, [leagueId]);
 
   async function handleSave() {
