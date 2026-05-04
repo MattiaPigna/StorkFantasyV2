@@ -243,9 +243,9 @@ export function LineupView() {
 
                 // Card dimensions: adapt to lineup size
                 const cardW = lineupSize <= 8 ? 52 : lineupSize <= 11 ? 46 : 40;
-                const cardH = Math.round(cardW * 1.35);
-                const avatarH = Math.round(cardH * 0.65);
-                const fontSize = lineupSize <= 8 ? 9 : 8;
+                const cardH = Math.round(cardW * 1.45);
+                const avatarH = Math.round(cardH * 0.62);
+                const fontSize = lineupSize <= 8 ? 9 : lineupSize <= 11 ? 8 : 7;
 
                 return (
                   <button
@@ -332,13 +332,14 @@ export function LineupView() {
                             height: cardH - avatarH,
                             background: "rgba(0,0,0,0.92)",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            padding: "0 3px",
+                            padding: "0 4px",
+                            overflow: "hidden",
                           }}>
                             <span style={{
                               fontSize, fontWeight: 800, color: "#fff",
                               letterSpacing: "0.02em", textTransform: "uppercase",
                               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                              maxWidth: cardW - 6,
+                              display: "block", width: "100%", textAlign: "center",
                             }}>
                               {player.name.split(" ").slice(-1)[0]}
                             </span>
