@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { getLeagueByInviteCode, joinLeague, createLeague } from "@/lib/db/leagues";
 import { useLeagueStore } from "@/store/league";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +19,9 @@ export function LeagueSetup() {
   const [inviteCode, setInviteCode] = useState("");
   const [leagueName, setLeagueName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
-  const [tab, setTab] = useState<Tab>("join");
+  const searchParams = useSearchParams();
+  const initialTab = (searchParams.get("tab") as Tab) ?? "join";
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   const { setActiveLeague, setMyLeagues, myLeagues } = useLeagueStore();
   const { toast } = useToast();
@@ -103,10 +105,10 @@ export function LeagueSetup() {
       {/* Top bar */}
       <div className="fixed top-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-10">
         <button
-          onClick={() => router.push("/")}
+          onClick={() => router.push(myLeagues.length > 0 ? "/league/select" : "/")}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" /> Indietro
+          <ArrowLeft className="w-4 h-4" /> {myLeagues.length > 0 ? "Le mie leghe" : "Indietro"}
         </button>
         <button
           onClick={handleLogout}

@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as "signup" | "recovery" | null;
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard/home";
+  const next = searchParams.get("next") ?? "/league/select";
 
   const supabase = await createClient();
 

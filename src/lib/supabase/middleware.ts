@@ -62,7 +62,7 @@ export async function updateSession(request: NextRequest) {
       .eq("user_id", user.id);
 
     const url = request.nextUrl.clone();
-    url.pathname = (count && count > 0) ? "/dashboard/home" : "/league/setup";
+    url.pathname = (count && count > 0) ? "/league/select" : "/league/setup";
     return NextResponse.redirect(url);
   }
 
