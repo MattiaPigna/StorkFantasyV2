@@ -18,6 +18,15 @@ function LeaguePage({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function hexToRgb(hex: string): string {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return "249, 115, 22";
+  return `${r}, ${g}, ${b}`;
+}
+
 const navItems = [
   { href: "/dashboard/home", label: "Home", icon: Home },
   { href: "/dashboard/lineup", label: "Il Mio Campo", icon: LayoutGrid },
@@ -37,6 +46,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [showLeaguePicker, setShowLeaguePicker] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
   const mobilePickerRef = useRef<HTMLDivElement>(null);
+
+  // Apply league theme (CSS variables) whenever the active league changes
+  useEffect(() => {
+    const color = activeLeague?.primary_color ?? "#F97316";
+    document.documentElement.style.setProperty("--league-primary", color);
+    document.documentElement.style.setProperty("--league-primary-rgb", hexToRgb(color));
+  }, [activeLeague?.primary_color]);
 
   useEffect(() => {
     if (!showLeaguePicker) return;
@@ -109,11 +125,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Logo + League selector */}
         <div className="px-5 py-5 border-b border-stork-dark-border">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-stork-orange to-stork-gold-dark flex items-center justify-center shadow-glow-orange shrink-0">
-              <Trophy className="w-5 h-5 text-black" />
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
+              style={{ background: `var(--league-primary)`, boxShadow: `0 0 20px rgba(var(--league-primary-rgb), 0.35)` }}
+            >
+              {activeLeague?.logo_url
+                ? <img src={activeLeague.logo_url} alt={activeLeague.name} className="w-full h-full object-cover" />
+                : <Trophy className="w-5 h-5 text-black" />
+              }
             </div>
             <div className="min-w-0">
-              <p className="font-black text-sm text-gradient truncate">{activeLeague?.name ?? "StorkLeague"}</p>
+              <p className="font-black text-sm truncate" style={{ color: `var(--league-primary)` }}>{activeLeague?.name ?? "StorkLeague"}</p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Fantacalcio</p>
             </div>
           </div>
@@ -156,10 +178,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
+                style={active ? { background: `var(--league-primary)`, boxShadow: `0 0 16px rgba(var(--league-primary-rgb), 0.3)` } : undefined}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
                   active
-                    ? "bg-gradient-to-r from-stork-orange to-stork-gold-dark text-black shadow-glow-orange"
+                    ? "text-black"
                     : "text-muted-foreground hover:text-foreground hover:bg-stork-dark"
                 )}
               >
@@ -174,10 +197,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <div className="px-3 pb-4 border-t border-stork-dark-border pt-4 space-y-0.5">
           <Link
             href="/dashboard/profile"
+            style={pathname === "/dashboard/profile" ? { background: `var(--league-primary)`, boxShadow: `0 0 16px rgba(var(--league-primary-rgb), 0.3)` } : undefined}
             className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group",
               pathname === "/dashboard/profile"
-                ? "bg-gradient-to-r from-stork-orange to-stork-gold-dark text-black shadow-glow-orange"
+                ? "text-black"
                 : "text-muted-foreground hover:text-foreground hover:bg-stork-dark"
             )}
           >
@@ -256,12 +280,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
+                style={active ? { color: `var(--league-primary)` } : undefined}
                 className={cn(
                   "flex-shrink-0 flex flex-col items-center gap-1.5 pt-3 pb-1 px-4 text-[11px] font-medium transition-all min-w-[68px]",
-                  active ? "text-stork-orange" : "text-muted-foreground"
+                  !active && "text-muted-foreground"
                 )}
               >
-                <item.icon className={cn("w-6 h-6", active && "drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]")} />
+                <item.icon className="w-6 h-6" style={active ? { filter: `drop-shadow(0 0 6px rgba(var(--league-primary-rgb), 0.8))` } : undefined} />
                 <span className="truncate">{item.label}</span>
               </Link>
             );

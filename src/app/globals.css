@@ -4,6 +4,10 @@
 
 @layer base {
   :root {
+    /* League theming — overridden via JS when active league changes */
+    --league-primary: #F97316;
+    --league-primary-rgb: 249, 115, 22;
+
     /* Deep black + orange/gold palette */
     --background: 20 14% 6%;
     --foreground: 40 20% 95%;
@@ -40,7 +44,7 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
     background-image:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(249,115,22,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(var(--league-primary-rgb), 0.08) 0%, transparent 60%),
       radial-gradient(ellipse 60% 40% at 80% 100%, rgba(245,158,11,0.05) 0%, transparent 50%);
     background-attachment: fixed;
   }

@@ -7,6 +7,8 @@ export interface League {
   invite_code: string;
   is_active: boolean;
   created_at: string;
+  primary_color?: string | null;
+  logo_url?: string | null;
 }
 
 export interface LeagueMember {

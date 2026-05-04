@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ArrowLeft, Users, UserCog, LayoutGrid, Calendar,
   AlertTriangle, Trash2, Loader2, Shield, CheckCircle2,
-  Pencil, X, Check, UserMinus,
+  Pencil, X, Check, UserMinus, Palette, Save, Image,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import {
 interface LeagueInfo {
   id: string; name: string; invite_code: string;
   is_active: boolean; created_at: string; owner_id: string;
+  primary_color?: string | null; logo_url?: string | null;
 }
 
 interface MemberRow {
@@ -48,7 +49,7 @@ interface MatchdayRow {
   status: string; created_at: string; stat_count: number;
 }
 
-type Tab = "utenti" | "giocatori" | "rose" | "giornate";
+type Tab = "utenti" | "giocatori" | "rose" | "giornate" | "design";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -73,11 +74,18 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
   const [editingPlayer, setEditingPlayer] = useState<string | null>(null);
   const [playerEdit, setPlayerEdit] = useState<Partial<PlayerRow>>({});
 
+  // design state
+  const [designColor, setDesignColor] = useState("#F97316");
+  const [designLogo, setDesignLogo] = useState("");
+  const [savingDesign, setSavingDesign] = useState(false);
+
   useEffect(() => {
     async function loadLeague() {
       const supabase = createClient();
       const { data } = await supabase.from("leagues").select("*").eq("id", id).single();
       setLeague(data);
+      if (data?.primary_color) setDesignColor(data.primary_color);
+      if (data?.logo_url) setDesignLogo(data.logo_url);
       setLoading(false);
     }
     loadLeague();
@@ -157,6 +165,24 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
   }, [tab, id, tabLoaded]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
+
+  async function saveDesign() {
+    setSavingDesign(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("leagues").update({
+        primary_color: designColor,
+        logo_url: designLogo.trim() || null,
+      }).eq("id", id);
+      if (error) throw error;
+      setLeague((prev) => prev ? { ...prev, primary_color: designColor, logo_url: designLogo.trim() || null } : prev);
+      toast({ title: "Design salvato!" });
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });
+    } finally {
+      setSavingDesign(false);
+    }
+  }
 
   async function kickMember(userId: string) {
     const supabase = createClient();
@@ -264,6 +290,7 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
     { key: "giocatori", label: "Giocatori", icon: UserCog },
     { key: "rose", label: "Rose", icon: LayoutGrid },
     { key: "giornate", label: "Giornate", icon: Calendar },
+    { key: "design", label: "Design", icon: Palette },
   ];
 
   const isTabLoaded = tabLoaded.has(tab);
@@ -315,7 +342,7 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
       </div>
 
       <div className="max-w-5xl mx-auto p-4 lg:p-6">
-        {!isTabLoaded ? (
+        {tab !== "design" && !isTabLoaded ? (
           <div className="flex justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
@@ -604,6 +631,117 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* ── Tab Design ── */}
+            {tab === "design" && (
+              <div className="space-y-6 max-w-lg">
+                <p className="text-sm text-muted-foreground">
+                  Personalizza l&apos;aspetto della dashboard per questa lega. Le modifiche saranno visibili agli utenti al prossimo cambio di lega.
+                </p>
+
+                {/* Color picker */}
+                <div className="bg-stork-dark-card border border-stork-dark-border rounded-xl p-5 space-y-4">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-stork-orange" />
+                    Colore primario
+                  </h3>
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <input
+                        type="color"
+                        value={designColor}
+                        onChange={(e) => setDesignColor(e.target.value)}
+                        className="w-14 h-14 rounded-xl cursor-pointer border-0 bg-transparent p-0.5"
+                        title="Scegli colore"
+                      />
+                    </div>
+                    <div className="space-y-1 flex-1">
+                      <p className="text-sm font-medium">Hex</p>
+                      <input
+                        type="text"
+                        value={designColor}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) setDesignColor(v);
+                        }}
+                        className="w-full h-9 rounded-lg border border-stork-dark-border bg-stork-dark px-3 text-sm font-mono"
+                        maxLength={7}
+                      />
+                    </div>
+                    {/* Preview */}
+                    <div
+                      className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: designColor }}
+                    >
+                      <span className="text-xs font-black text-black/70">AA</span>
+                    </div>
+                  </div>
+                  {/* Preset palette */}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">Colori rapidi</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        "#F97316", "#3B82F6", "#10B981", "#8B5CF6",
+                        "#EF4444", "#F59E0B", "#EC4899", "#06B6D4",
+                        "#84CC16", "#6366F1",
+                      ].map((c) => (
+                        <button
+                          key={c}
+                          onClick={() => setDesignColor(c)}
+                          className="w-8 h-8 rounded-lg border-2 transition-all hover:scale-110"
+                          style={{ background: c, borderColor: designColor === c ? "white" : "transparent" }}
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Logo URL */}
+                <div className="bg-stork-dark-card border border-stork-dark-border rounded-xl p-5 space-y-4">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Image className="w-4 h-4 text-stork-orange" />
+                    Logo lega
+                  </h3>
+                  <div className="space-y-2">
+                    <input
+                      type="url"
+                      value={designLogo}
+                      onChange={(e) => setDesignLogo(e.target.value)}
+                      placeholder="https://... (URL immagine)"
+                      className="w-full h-9 rounded-lg border border-stork-dark-border bg-stork-dark px-3 text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Lascia vuoto per usare l&apos;icona predefinita. Il logo appare nella sidebar e nel selettore lega mobile.
+                    </p>
+                  </div>
+                  {designLogo && (
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center"
+                        style={{ background: designColor }}
+                      >
+                        <img
+                          src={designLogo}
+                          alt="Preview logo"
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{league?.name}</p>
+                        <p className="text-xs text-muted-foreground">Anteprima sidebar</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Button onClick={saveDesign} disabled={savingDesign} size="lg" className="w-full">
+                  {savingDesign ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                  {savingDesign ? "Salvataggio..." : "Salva Design"}
+                </Button>
               </div>
             )}
           </>
