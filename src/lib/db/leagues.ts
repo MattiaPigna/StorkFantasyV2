@@ -139,3 +139,14 @@ export async function deleteLeague(leagueId: string): Promise<void> {
   const { error } = await supabase.from("leagues").delete().eq("id", leagueId);
   if (error) throw new Error(error.message);
 }
+
+export async function createLeagueAsSuperAdmin(name: string, ownerId: string): Promise<League> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("leagues")
+    .insert({ name, owner_id: ownerId })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
