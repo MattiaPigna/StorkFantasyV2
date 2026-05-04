@@ -51,33 +51,34 @@
 
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { @apply bg-stork-orange/30 rounded-full; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-stork-orange/60; }
+  ::-webkit-scrollbar-thumb { background-color: rgba(var(--league-primary-rgb), 0.3); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background-color: rgba(var(--league-primary-rgb), 0.6); }
 }
 
 @layer utilities {
+  /* ── Stork utilities ──────────────────────────────────────────────────────── */
   .gradient-stork {
-    background: linear-gradient(135deg, #F97316 0%, #D97706 100%);
+    background: linear-gradient(135deg, var(--league-primary) 0%, #D97706 100%);
   }
   .gradient-gold {
     background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
   }
   .gradient-fire {
-    background: linear-gradient(135deg, #EA580C 0%, #F97316 50%, #F59E0B 100%);
+    background: linear-gradient(135deg, #EA580C 0%, var(--league-primary) 50%, #F59E0B 100%);
   }
   .glass {
     background: rgba(20, 13, 7, 0.7);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(249, 115, 22, 0.12);
+    border: 1px solid rgba(var(--league-primary-rgb), 0.12);
   }
   .glass-card {
     background: rgba(24, 16, 8, 0.85);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(249, 115, 22, 0.15);
+    border: 1px solid rgba(var(--league-primary-rgb), 0.15);
   }
   .text-gradient {
-    background: linear-gradient(135deg, #F97316 0%, #F59E0B 100%);
+    background: linear-gradient(135deg, var(--league-primary) 0%, #F59E0B 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -89,13 +90,84 @@
     background-clip: text;
   }
   .glow-orange {
-    box-shadow: 0 0 20px rgba(249,115,22,0.25), 0 0 60px rgba(249,115,22,0.08);
+    box-shadow: 0 0 20px rgba(var(--league-primary-rgb), 0.25), 0 0 60px rgba(var(--league-primary-rgb), 0.08);
   }
   .glow-gold {
     box-shadow: 0 0 20px rgba(245,158,11,0.25), 0 0 60px rgba(245,158,11,0.08);
   }
   .border-glow {
-    border-color: rgba(249,115,22,0.4);
-    box-shadow: 0 0 0 1px rgba(249,115,22,0.15), inset 0 0 20px rgba(249,115,22,0.03);
+    border-color: rgba(var(--league-primary-rgb), 0.4);
+    box-shadow: 0 0 0 1px rgba(var(--league-primary-rgb), 0.15), inset 0 0 20px rgba(var(--league-primary-rgb), 0.03);
   }
 }
+
+/* ── League theming: override all stork-orange Tailwind classes ─────────────
+   By overriding the generated Tailwind classes here (after @tailwind utilities),
+   every text-stork-orange / bg-stork-orange / border-stork-orange etc.
+   across the entire app automatically picks up the active league's color.
+   No component files need to change.
+────────────────────────────────────────────────────────────────────────────── */
+
+/* text */
+.text-stork-orange                    { color: var(--league-primary) !important; }
+.text-stork-orange\/80                { color: rgba(var(--league-primary-rgb), 0.8) !important; }
+.text-stork-orange\/60                { color: rgba(var(--league-primary-rgb), 0.6) !important; }
+
+/* background */
+.bg-stork-orange                      { background-color: var(--league-primary) !important; }
+.bg-stork-orange\/60                  { background-color: rgba(var(--league-primary-rgb), 0.6) !important; }
+.bg-stork-orange\/30                  { background-color: rgba(var(--league-primary-rgb), 0.3) !important; }
+.bg-stork-orange\/20                  { background-color: rgba(var(--league-primary-rgb), 0.2) !important; }
+.bg-stork-orange\/15                  { background-color: rgba(var(--league-primary-rgb), 0.15) !important; }
+.bg-stork-orange\/10                  { background-color: rgba(var(--league-primary-rgb), 0.1) !important; }
+.bg-stork-orange\/5                   { background-color: rgba(var(--league-primary-rgb), 0.05) !important; }
+
+/* border */
+.border-stork-orange                  { border-color: var(--league-primary) !important; }
+.border-stork-orange\/60              { border-color: rgba(var(--league-primary-rgb), 0.6) !important; }
+.border-stork-orange\/50              { border-color: rgba(var(--league-primary-rgb), 0.5) !important; }
+.border-stork-orange\/40              { border-color: rgba(var(--league-primary-rgb), 0.4) !important; }
+.border-stork-orange\/30              { border-color: rgba(var(--league-primary-rgb), 0.3) !important; }
+.border-stork-orange\/25              { border-color: rgba(var(--league-primary-rgb), 0.25) !important; }
+.border-stork-orange\/20              { border-color: rgba(var(--league-primary-rgb), 0.2) !important; }
+
+/* ring */
+.ring-stork-orange\/50                { --tw-ring-color: rgba(var(--league-primary-rgb), 0.5) !important; }
+.ring-stork-orange\/40                { --tw-ring-color: rgba(var(--league-primary-rgb), 0.4) !important; }
+
+/* gradient from */
+.from-stork-orange {
+  --tw-gradient-from: var(--league-primary) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgba(var(--league-primary-rgb), 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+.from-stork-orange\/20 {
+  --tw-gradient-from: rgba(var(--league-primary-rgb), 0.2) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgba(var(--league-primary-rgb), 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+/* box shadow glow */
+.shadow-glow-orange {
+  box-shadow: 0 0 20px rgba(var(--league-primary-rgb), 0.3), 0 0 60px rgba(var(--league-primary-rgb), 0.1) !important;
+}
+
+/* hover variants */
+.hover\:text-stork-orange:hover       { color: var(--league-primary) !important; }
+.hover\:text-stork-orange\/80:hover   { color: rgba(var(--league-primary-rgb), 0.8) !important; }
+.hover\:border-stork-orange\/20:hover { border-color: rgba(var(--league-primary-rgb), 0.2) !important; }
+.hover\:border-stork-orange\/30:hover { border-color: rgba(var(--league-primary-rgb), 0.3) !important; }
+.hover\:border-stork-orange\/40:hover { border-color: rgba(var(--league-primary-rgb), 0.4) !important; }
+.hover\:border-stork-orange\/50:hover { border-color: rgba(var(--league-primary-rgb), 0.5) !important; }
+.hover\:bg-stork-orange\/5:hover      { background-color: rgba(var(--league-primary-rgb), 0.05) !important; }
+.hover\:bg-stork-orange\/10:hover     { background-color: rgba(var(--league-primary-rgb), 0.1) !important; }
+.hover\:bg-stork-orange\/20:hover     { background-color: rgba(var(--league-primary-rgb), 0.2) !important; }
+.hover\:shadow-glow-orange:hover {
+  box-shadow: 0 0 20px rgba(var(--league-primary-rgb), 0.3), 0 0 60px rgba(var(--league-primary-rgb), 0.1) !important;
+}
+
+/* focus variants */
+.focus\:border-stork-orange\/50:focus { border-color: rgba(var(--league-primary-rgb), 0.5) !important; }
+
+/* group-hover variants */
+.group:hover .group-hover\:text-stork-orange { color: var(--league-primary) !important; }
