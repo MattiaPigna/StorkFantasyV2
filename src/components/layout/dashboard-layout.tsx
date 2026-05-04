@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, LayoutGrid, ShoppingCart, Trophy, BookOpen, LogOut, Shield, User, ChevronDown } from "lucide-react";
+import { Home, LayoutGrid, ShoppingCart, Trophy, BookOpen, LogOut, Shield, User, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +12,11 @@ import { getAppSettings } from "@/lib/db/settings";
 import { getMyLeagues } from "@/lib/db/leagues";
 import { useLeagueStore } from "@/store/league";
 import type { AppSettings } from "@/types";
+
+/** Forces a full remount of children when leagueId changes, clearing stale state. */
+function LeaguePage({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
+}
 
 const navItems = [
   { href: "/dashboard/home", label: "Home", icon: Home },
@@ -31,13 +36,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { activeLeague, myLeagues, setActiveLeague, setMyLeagues, setAppSettings } = useLeagueStore();
   const [showLeaguePicker, setShowLeaguePicker] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const mobilePickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!showLeaguePicker) return;
     function handleClickOutside(e: MouseEvent) {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-        setShowLeaguePicker(false);
-      }
+      const target = e.target as Node;
+      const inDesktop = pickerRef.current?.contains(target);
+      const inMobile = mobilePickerRef.current?.contains(target);
+      if (!inDesktop && !inMobile) setShowLeaguePicker(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -126,7 +133,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   {myLeagues.map((l) => (
                     <button
                       key={l.id}
-                      onClick={() => { setActiveLeague(l); setShowLeaguePicker(false); router.refresh(); }}
+                      onClick={() => { setActiveLeague(l); setShowLeaguePicker(false); }}
                       className={cn(
                         "w-full text-left px-3 py-2 text-xs hover:bg-stork-dark transition-all",
                         activeLeague?.id === l.id && "text-stork-orange font-semibold"
@@ -199,7 +206,45 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Main */}
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
         {settings?.marquee_text && <MarqueeBanner text={settings.marquee_text} />}
-        <main className="flex-1 pb-24 md:pb-0">{children}</main>
+
+        {/* Mobile league switcher — visible only when user has multiple leagues */}
+        {myLeagues.length > 1 && (
+          <div className="md:hidden sticky top-0 z-10 bg-stork-dark-card/95 backdrop-blur-md border-b border-stork-dark-border px-4 py-2" ref={mobilePickerRef}>
+            <button
+              onClick={() => setShowLeaguePicker(!showLeaguePicker)}
+              className="flex items-center gap-2 text-sm font-semibold text-foreground"
+            >
+              <Trophy className="w-3.5 h-3.5 text-stork-orange shrink-0" />
+              <span className="truncate max-w-[200px]">{activeLeague?.name}</span>
+              {showLeaguePicker
+                ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              }
+            </button>
+            {showLeaguePicker && (
+              <div className="absolute top-full left-0 right-0 bg-stork-dark-card border-b border-stork-dark-border shadow-card z-50">
+                {myLeagues.map((l) => (
+                  <button
+                    key={l.id}
+                    onClick={() => { setActiveLeague(l); setShowLeaguePicker(false); }}
+                    className={cn(
+                      "w-full text-left px-4 py-3 text-sm hover:bg-stork-dark transition-all border-b border-stork-dark-border last:border-0",
+                      activeLeague?.id === l.id && "text-stork-orange font-semibold"
+                    )}
+                  >
+                    {l.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <main className="flex-1 pb-24 md:pb-0">
+          <LeaguePage key={activeLeague?.id ?? "no-league"}>
+            {children}
+          </LeaguePage>
+        </main>
       </div>
 
       {/* Bottom nav Mobile only */}
