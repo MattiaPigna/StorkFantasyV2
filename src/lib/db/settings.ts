@@ -31,7 +31,7 @@ export async function updateAppSettings(leagueId: string, updates: Partial<AppSe
   if (!updated || updated.length === 0) {
     const { error: insertError } = await supabase
       .from("app_settings")
-      .insert(payload);
+      .insert({ ...payload, id: crypto.randomUUID() });
     if (insertError) throw new Error(insertError.message);
   }
 }
