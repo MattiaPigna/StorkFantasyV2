@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { ensureProfile } from "@/app/actions/auth";
 
 const loginSchema = z.object({
   email: z.string().email("Email non valida"),
@@ -81,13 +82,8 @@ export function LandingPage() {
         setMode("login");
         return;
       }
-      if (result.user) {
-        await supabase.from("profiles").upsert({
-          id: result.user.id,
-          team_name: data.teamName,
-          manager_name: data.managerName,
-        }, { onConflict: "id" });
-      }
+      const { error: profileError } = await ensureProfile(data.teamName, data.managerName);
+      if (profileError) throw new Error(profileError);
       router.push("/dashboard/home");
       router.refresh();
     } catch (err: unknown) {
