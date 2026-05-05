@@ -186,6 +186,15 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
   }
 
   async function kickMember(userId: string) {
+    const supabase = createClient();
+    const { error } = await supabase.from("league_members").delete()
+      .eq("league_id", id).eq("user_id", userId);
+    if (error) { toast({ variant: "destructive", title: "Errore", description: error.message }); return; }
+    setMembers((prev) => prev.filter((m) => m.user_id !== userId));
+    toast({ title: "Membro rimosso dalla lega" });
+  }
+
+  async function deleteUserAccount(userId: string) {
     const { error } = await deleteUserCompletely(userId);
     if (error) { toast({ variant: "destructive", title: "Errore", description: error }); return; }
     setMembers((prev) => prev.filter((m) => m.user_id !== userId));
@@ -405,25 +414,48 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
                       <p className="text-[10px] text-muted-foreground">
                         Iscritto il {new Date(m.joined_at).toLocaleDateString("it-IT")}
                       </p>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-400 hover:bg-red-500/10 h-7 px-2 text-xs">
-                            <UserMinus className="w-3.5 h-3.5 mr-1" /> Kick
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Eliminare {m.manager_name}?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              L&apos;account verrà eliminato definitivamente da Supabase. Rosa, punti e accesso verranno rimossi. Azione irreversibile.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Annulla</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => kickMember(m.user_id)} className="bg-destructive hover:bg-destructive/90">Elimina account</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <div className="flex items-center gap-1">
+                        {/* Kick dalla lega */}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-yellow-400 hover:bg-yellow-500/10 h-7 px-2 text-xs">
+                              <UserMinus className="w-3.5 h-3.5 mr-1" /> Kick
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Rimuovere {m.manager_name} dalla lega?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                L&apos;utente verrà rimosso da questa lega. Il suo account resterà attivo.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annulla</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => kickMember(m.user_id)} className="bg-yellow-600 hover:bg-yellow-500">Rimuovi dalla lega</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                        {/* Elimina account completo */}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-400 hover:bg-red-500/10 h-7 px-2 text-xs">
+                              <Trash2 className="w-3.5 h-3.5 mr-1" /> Elimina
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Eliminare account {m.manager_name}?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                L&apos;account verrà eliminato definitivamente da Supabase. Rosa, punti e accesso verranno rimossi. Azione irreversibile.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annulla</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteUserAccount(m.user_id)} className="bg-destructive hover:bg-destructive/90">Elimina account</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   </div>
                   );

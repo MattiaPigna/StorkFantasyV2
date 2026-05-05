@@ -39,10 +39,9 @@ export function AdminMembersView() {
 
   async function handleKick(userId: string, teamName: string) {
     try {
-      const { error } = await deleteUserCompletely(userId);
-      if (error) throw new Error(error);
+      await kickMember(leagueId, userId);
       setMembers((prev) => prev.filter((m) => m.user_id !== userId));
-      toast({ title: `${teamName} eliminato`, description: "Account rimosso da Supabase." });
+      toast({ title: `${teamName} rimosso dalla lega` });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });
     }
@@ -124,9 +123,9 @@ export function AdminMembersView() {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Eliminare {member.team_name}?</AlertDialogTitle>
+                              <AlertDialogTitle>Rimuovere {member.team_name}?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                L&apos;account di {member.manager_name} verrà eliminato definitivamente da Supabase. Non potrà più accedere all&apos;app. Azione irreversibile.
+                                {member.manager_name} verrà rimosso dalla lega. Il suo account resterà attivo e potrà unirsi ad altre leghe.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -135,7 +134,7 @@ export function AdminMembersView() {
                                 onClick={() => handleKick(member.user_id, member.team_name)}
                                 className="bg-destructive"
                               >
-                                Elimina account
+                                Rimuovi dalla lega
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
