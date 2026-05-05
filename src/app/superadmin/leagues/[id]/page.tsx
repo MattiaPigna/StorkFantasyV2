@@ -257,14 +257,18 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
     const updatedLineup = row.lineup.map((s) =>
       s.player_id === playerId ? { ...s, player_id: null } : s
     );
+    const playerPrice = players.find((p) => p.id === playerId)?.price ?? 0;
+    const member = members.find((m) => m.team_id === row.team_id);
+    const updatedCredits = (member?.credits ?? 0) + playerPrice;
     const { error } = await supabase.from("user_teams")
-      .update({ players: updatedPlayers, lineup: updatedLineup })
+      .update({ players: updatedPlayers, lineup: updatedLineup, credits: updatedCredits })
       .eq("id", row.team_id);
     if (error) { toast({ variant: "destructive", title: "Errore", description: error.message }); return; }
     setRose((prev) => prev.map((r) => r.team_id === row.team_id
       ? { ...r, players: updatedPlayers, lineup: updatedLineup, orphans: r.orphans.filter((o) => o !== playerId) } : r
     ));
-    toast({ title: "Giocatore rimosso dalla rosa" });
+    setMembers((prev) => prev.map((m) => m.team_id === row.team_id ? { ...m, credits: updatedCredits } : m));
+    toast({ title: "Giocatore rimosso dalla rosa", description: playerPrice > 0 ? `+${playerPrice} SK restituiti` : undefined });
   }
 
   async function cleanOrphans(row: RosaRow) {
