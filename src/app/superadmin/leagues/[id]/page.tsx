@@ -44,6 +44,8 @@ interface RosaRow {
   team_id: string; players: string[]; orphans: string[];
   lineup: { position: number; player_id: string | null }[];
   player_names: Record<string, string>;
+  player_prices: Record<string, number>;
+  credits: number;
 }
 
 interface MatchdayRow {
@@ -130,11 +132,12 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
 
       if (tab === "rose") {
         const [{ data: teams }, { data: playerData }, { data: profiles }] = await Promise.all([
-          supabase.from("user_teams").select("id, user_id, players, lineup").eq("league_id", id),
-          supabase.from("players").select("id, name").eq("league_id", id),
+          supabase.from("user_teams").select("id, user_id, players, lineup, credits").eq("league_id", id),
+          supabase.from("players").select("id, name, price").eq("league_id", id),
           supabase.from("profiles").select("id, manager_name, team_name"),
         ]);
         const playerMap = Object.fromEntries((playerData ?? []).map((p) => [p.id, p.name]));
+        const priceMap = Object.fromEntries((playerData ?? []).map((p) => [p.id, p.price ?? 0]));
         const existingIds = new Set(Object.keys(playerMap));
         setRose((teams ?? []).map((t) => {
           const pl = (t.players as string[]) ?? [];
@@ -146,6 +149,8 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
             players: pl, orphans: pl.filter((pid) => !existingIds.has(pid)),
             lineup: (t.lineup as { position: number; player_id: string | null }[]) ?? [],
             player_names: playerMap,
+            player_prices: priceMap,
+            credits: t.credits ?? 0,
           };
         }));
       }
@@ -257,17 +262,15 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
     const updatedLineup = row.lineup.map((s) =>
       s.player_id === playerId ? { ...s, player_id: null } : s
     );
-    const playerPrice = players.find((p) => p.id === playerId)?.price ?? 0;
-    const member = members.find((m) => m.team_id === row.team_id);
-    const updatedCredits = (member?.credits ?? 0) + playerPrice;
+    const playerPrice = row.player_prices[playerId] ?? 0;
+    const updatedCredits = row.credits + playerPrice;
     const { error } = await supabase.from("user_teams")
       .update({ players: updatedPlayers, lineup: updatedLineup, credits: updatedCredits })
       .eq("id", row.team_id);
     if (error) { toast({ variant: "destructive", title: "Errore", description: error.message }); return; }
     setRose((prev) => prev.map((r) => r.team_id === row.team_id
-      ? { ...r, players: updatedPlayers, lineup: updatedLineup, orphans: r.orphans.filter((o) => o !== playerId) } : r
+      ? { ...r, players: updatedPlayers, lineup: updatedLineup, credits: updatedCredits, orphans: r.orphans.filter((o) => o !== playerId) } : r
     ));
-    setMembers((prev) => prev.map((m) => m.team_id === row.team_id ? { ...m, credits: updatedCredits } : m));
     toast({ title: "Giocatore rimosso dalla rosa", description: playerPrice > 0 ? `+${playerPrice} SK restituiti` : undefined });
   }
 
