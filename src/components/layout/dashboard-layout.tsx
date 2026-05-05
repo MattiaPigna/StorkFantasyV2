@@ -272,7 +272,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        <main className="flex-1 pb-24 md:pb-0 overflow-x-hidden">
+        <main className="flex-1 pb-24 md:pb-0">
           <LeaguePage key={activeLeague?.id ?? "no-league"}>
             {children}
           </LeaguePage>
