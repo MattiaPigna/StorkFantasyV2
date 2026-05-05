@@ -42,6 +42,7 @@ interface PlayerRow {
 interface RosaRow {
   user_id: string; manager_name: string; team_name: string;
   team_id: string; players: string[]; orphans: string[];
+  lineup: { position: number; player_id: string | null }[];
   player_names: Record<string, string>;
 }
 
@@ -129,7 +130,7 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
 
       if (tab === "rose") {
         const [{ data: teams }, { data: playerData }, { data: profiles }] = await Promise.all([
-          supabase.from("user_teams").select("id, user_id, players").eq("league_id", id),
+          supabase.from("user_teams").select("id, user_id, players, lineup").eq("league_id", id),
           supabase.from("players").select("id, name").eq("league_id", id),
           supabase.from("profiles").select("id, manager_name, team_name"),
         ]);
@@ -143,6 +144,7 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
             manager_name: profile?.manager_name ?? "—",
             team_name: profile?.team_name ?? "—",
             players: pl, orphans: pl.filter((pid) => !existingIds.has(pid)),
+            lineup: (t.lineup as { position: number; player_id: string | null }[]) ?? [],
             player_names: playerMap,
           };
         }));
@@ -251,11 +253,16 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
 
   async function removeFromRosa(row: RosaRow, playerId: string) {
     const supabase = createClient();
-    const updated = row.players.filter((pid) => pid !== playerId);
-    const { error } = await supabase.from("user_teams").update({ players: updated }).eq("id", row.team_id);
+    const updatedPlayers = row.players.filter((pid) => pid !== playerId);
+    const updatedLineup = row.lineup.map((s) =>
+      s.player_id === playerId ? { ...s, player_id: null } : s
+    );
+    const { error } = await supabase.from("user_teams")
+      .update({ players: updatedPlayers, lineup: updatedLineup })
+      .eq("id", row.team_id);
     if (error) { toast({ variant: "destructive", title: "Errore", description: error.message }); return; }
     setRose((prev) => prev.map((r) => r.team_id === row.team_id
-      ? { ...r, players: updated, orphans: r.orphans.filter((o) => o !== playerId) } : r
+      ? { ...r, players: updatedPlayers, lineup: updatedLineup, orphans: r.orphans.filter((o) => o !== playerId) } : r
     ));
     toast({ title: "Giocatore rimosso dalla rosa" });
   }
@@ -263,10 +270,13 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
   async function cleanOrphans(row: RosaRow) {
     const supabase = createClient();
     const cleaned = row.players.filter((pid) => !row.orphans.includes(pid));
+    const cleanedLineup = row.lineup.map((s) =>
+      s.player_id && row.orphans.includes(s.player_id) ? { ...s, player_id: null } : s
+    );
     const { error } = await supabase.from("user_teams")
-      .update({ players: cleaned, lineup: [] as unknown[] }).eq("id", row.team_id);
+      .update({ players: cleaned, lineup: cleanedLineup }).eq("id", row.team_id);
     if (error) { toast({ variant: "destructive", title: "Errore", description: error.message }); return; }
-    setRose((prev) => prev.map((r) => r.team_id === row.team_id ? { ...r, players: cleaned, orphans: [] } : r));
+    setRose((prev) => prev.map((r) => r.team_id === row.team_id ? { ...r, players: cleaned, lineup: cleanedLineup, orphans: [] } : r));
     toast({ title: "Orfani rimossi", description: `${row.orphans.length} ID non validi rimossi.` });
   }
 
