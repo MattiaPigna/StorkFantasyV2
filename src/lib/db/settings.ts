@@ -16,9 +16,11 @@ export async function getAppSettings(leagueId: string): Promise<AppSettings | nu
 
 export async function updateAppSettings(leagueId: string, updates: Partial<AppSettings>): Promise<void> {
   const supabase = createClient();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id: _id, ...safeUpdates } = updates as AppSettings & { id?: string };
   const { error } = await supabase
     .from("app_settings")
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update({ ...safeUpdates, updated_at: new Date().toISOString() })
     .eq("league_id", leagueId);
 
   if (error) throw new Error(error.message);

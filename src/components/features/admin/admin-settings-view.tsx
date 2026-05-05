@@ -64,7 +64,7 @@ function NumberInput({ label, description, value, onChange, min, max, icon: Icon
 }
 
 export function AdminSettingsView() {
-  const { activeLeague } = useLeagueStore();
+  const { activeLeague, setAppSettings } = useLeagueStore();
   const leagueId = activeLeague?.id ?? "";
 
   const [settings, setSettings] = useState<Partial<AppSettings>>({
@@ -99,6 +99,7 @@ export function AdminSettingsView() {
     setIsSaving(true);
     try {
       await updateAppSettings(leagueId, settings);
+      setAppSettings(settings as AppSettings);
       toast({ title: "Impostazioni salvate!" });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });
