@@ -73,7 +73,6 @@ export function LandingPage() {
         password: data.password,
         options: {
           data: { team_name: data.teamName, manager_name: data.managerName },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
       if (error) throw error;
@@ -82,9 +81,8 @@ export function LandingPage() {
         setMode("login");
         return;
       }
-      setEmailSentFor("signup");
-      setEmailSentTo(data.email);
-      setMode("email-sent");
+      router.push("/dashboard/home");
+      router.refresh();
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore registrazione" });
     } finally {
