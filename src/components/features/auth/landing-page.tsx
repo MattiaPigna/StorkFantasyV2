@@ -81,6 +81,13 @@ export function LandingPage() {
         setMode("login");
         return;
       }
+      if (result.user) {
+        await supabase.from("profiles").upsert({
+          id: result.user.id,
+          team_name: data.teamName,
+          manager_name: data.managerName,
+        }, { onConflict: "id" });
+      }
       router.push("/dashboard/home");
       router.refresh();
     } catch (err: unknown) {
