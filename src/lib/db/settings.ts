@@ -18,12 +18,14 @@ export async function updateAppSettings(leagueId: string, updates: Partial<AppSe
   const supabase = createClient();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { id: _id, ...safeUpdates } = updates as AppSettings & { id?: string };
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("app_settings")
     .update({ ...safeUpdates, updated_at: new Date().toISOString() })
-    .eq("league_id", leagueId);
+    .eq("league_id", leagueId)
+    .select("id");
 
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Permesso negato: impossibile aggiornare le impostazioni.");
 }
 
 export async function getSponsors(leagueId: string): Promise<Sponsor[]> {
