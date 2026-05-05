@@ -18,7 +18,8 @@ export async function updateAppSettings(leagueId: string, updates: Partial<AppSe
   const supabase = createClient();
   const { error } = await supabase
     .from("app_settings")
-    .upsert({ ...updates, league_id: leagueId, updated_at: new Date().toISOString() }, { onConflict: "league_id" });
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("league_id", leagueId);
 
   if (error) throw new Error(error.message);
 }
