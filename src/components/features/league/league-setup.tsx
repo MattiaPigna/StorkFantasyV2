@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { getLeagueByInviteCode, joinLeague, createLeague } from "@/lib/db/leagues";
+import { ensureProfile } from "@/app/actions/auth";
 import { useLeagueStore } from "@/store/league";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -60,6 +61,7 @@ export function LeagueSetup() {
       const league = await getLeagueByInviteCode(inviteCode.trim());
       if (!league) throw new Error("Codice invito non valido o lega non trovata");
 
+      await ensureProfile();
       await joinLeague(league.id, user.id);
       setActiveLeague(league);
       setMyLeagues([...myLeagues, league]);
@@ -84,6 +86,7 @@ export function LeagueSetup() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non autenticato");
 
+      await ensureProfile();
       const league = await createLeague(leagueName.trim(), user.id);
       await joinLeague(league.id, user.id);
       setActiveLeague(league);
