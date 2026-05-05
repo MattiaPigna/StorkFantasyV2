@@ -12,6 +12,7 @@ import { getAppSettings, getSponsors } from "@/lib/db/settings";
 import { getMatchdays } from "@/lib/db/matchdays";
 import { getDailyMatches, type DailyMatch } from "@/lib/db/matches";
 import { useLeagueStore } from "@/store/league";
+import { ensureProfile } from "@/app/actions/auth";
 import { formatPoints, formatCredits, isMarketOpen } from "@/lib/utils";
 import { SPONSOR_TYPE_LABELS } from "@/lib/constants";
 import Link from "next/link";
@@ -55,7 +56,7 @@ export function HomeView() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         const cached = useLeagueStore.getState().appSettings;
-        const [prof, set, matchdays, sps, allMatches] = await Promise.all([
+        const [profRaw, set, matchdays, sps, allMatches] = await Promise.all([
           getProfile(user.id),
           cached ? Promise.resolve(cached) : getAppSettings(leagueId),
           getMatchdays(leagueId),
@@ -63,6 +64,12 @@ export function HomeView() {
           getDailyMatches(leagueId).catch(() => [] as DailyMatch[]),
         ]);
         if (!cached && set) useLeagueStore.getState().setAppSettings(set);
+        // Se il profilo manca (riga cancellata manualmente), ricrealo dai metadati auth
+        let prof = profRaw;
+        if (!prof) {
+          await ensureProfile();
+          prof = await getProfile(user.id);
+        }
         setProfile(prof);
         setSettings(set);
         setSponsors(sps);

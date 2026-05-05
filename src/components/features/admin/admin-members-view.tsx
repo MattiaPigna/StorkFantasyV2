@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Trash2, Crown, Calendar } from "lucide-react";
+import { Users, Trash2, Crown, Calendar, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -75,28 +75,37 @@ export function AdminMembersView() {
               {members.map((member) => {
                 const isOwner = member.user_id === activeLeague?.owner_id;
                 const isMe = member.user_id === currentUserId;
+                const profileMissing = member.team_name === "—" && member.manager_name === "—";
                 return (
-                  <div key={member.user_id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
+                  <div key={member.user_id} className={`flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors ${profileMissing ? "bg-red-500/5" : ""}`}>
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-stork-orange/20 to-stork-gold/20 border border-stork-orange/20 flex items-center justify-center shrink-0">
-                        <span className="text-xs font-black text-stork-orange">
-                          {member.team_name.charAt(0).toUpperCase()}
-                        </span>
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${profileMissing ? "bg-red-500/20 border border-red-500/30" : "bg-gradient-to-br from-stork-orange/20 to-stork-gold/20 border border-stork-orange/20"}`}>
+                        {profileMissing
+                          ? <AlertTriangle className="w-4 h-4 text-red-400" />
+                          : <span className="text-xs font-black text-stork-orange">{member.team_name.charAt(0).toUpperCase()}</span>
+                        }
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold truncate">{member.team_name}</p>
-                          {isOwner && (
+                          <p className={`text-sm font-semibold truncate ${profileMissing ? "text-red-400" : ""}`}>
+                            {profileMissing ? "Profilo mancante" : member.team_name}
+                          </p>
+                          {profileMissing && (
+                            <Badge variant="destructive" className="text-[10px]">Da eliminare</Badge>
+                          )}
+                          {isOwner && !profileMissing && (
                             <Badge variant="outline" className="text-[10px] border-stork-orange/40 text-stork-orange flex items-center gap-1">
                               <Crown className="w-2.5 h-2.5" /> Owner
                             </Badge>
                           )}
-                          {isMe && !isOwner && (
+                          {isMe && !isOwner && !profileMissing && (
                             <Badge variant="outline" className="text-[10px]">Tu</Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-3 mt-0.5">
-                          <p className="text-xs text-muted-foreground">{member.manager_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {profileMissing ? member.user_id.slice(0, 16) + "…" : member.manager_name}
+                          </p>
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
                             {new Date(member.joined_at).toLocaleDateString("it-IT")}

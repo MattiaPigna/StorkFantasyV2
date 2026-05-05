@@ -352,13 +352,17 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground mb-4">{members.length} iscritti alla lega</p>
                 {members.length === 0 && <p className="text-muted-foreground text-center py-12">Nessun membro.</p>}
-                {members.map((m) => (
-                  <div key={m.user_id} className="bg-stork-dark-card border border-stork-dark-border rounded-xl px-5 py-4">
+                {members.map((m) => {
+                  const profileMissing = m.team_name === "—" && m.manager_name === "—";
+                  return (
+                  <div key={m.user_id} className={`bg-stork-dark-card border rounded-xl px-5 py-4 ${profileMissing ? "border-red-500/30 bg-red-500/5" : "border-stork-dark-border"}`}>
                     <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold">{m.manager_name}</span>
-                          {m.is_admin && <Badge variant="outline" className="text-[10px] border-stork-gold text-stork-gold">Admin</Badge>}
+                          {profileMissing
+                            ? <><AlertTriangle className="w-4 h-4 text-red-400" /><span className="font-bold text-red-400">Profilo mancante</span><Badge variant="destructive" className="text-[10px]">Da eliminare</Badge></>
+                            : <><span className="font-bold">{m.manager_name}</span>{m.is_admin && <Badge variant="outline" className="text-[10px] border-stork-gold text-stork-gold">Admin</Badge>}</>
+                          }
                         </div>
                         <p className="text-sm text-muted-foreground">{m.team_name}</p>
                         <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">{m.user_id}</p>
@@ -422,7 +426,8 @@ export default function LeagueDetailPage({ params }: { params: Promise<{ id: str
                       </AlertDialog>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
