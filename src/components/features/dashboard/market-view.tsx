@@ -47,21 +47,26 @@ export function MarketView({ onTeamChange }: { onTeamChange?: (team: UserTeam) =
   useEffect(() => {
     if (!leagueId) return;
     async function load() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
-      const cached = useLeagueStore.getState().appSettings;
-      const [pl, t, s] = await Promise.all([
-        getPlayers(leagueId),
-        getMyTeam(user.id, leagueId),
-        cached ? Promise.resolve(cached) : getAppSettings(leagueId),
-      ]);
-      if (!cached && s) useLeagueStore.getState().setAppSettings(s);
-      setPlayers(pl);
-      setTeam(t);
-      setSettings(s);
-      setIsLoading(false);
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        setUserId(user.id);
+        const cached = useLeagueStore.getState().appSettings;
+        const [pl, t, s] = await Promise.all([
+          getPlayers(leagueId),
+          getMyTeam(user.id, leagueId),
+          cached ? Promise.resolve(cached) : getAppSettings(leagueId),
+        ]);
+        if (!cached && s) useLeagueStore.getState().setAppSettings(s);
+        setPlayers(pl);
+        setTeam(t);
+        setSettings(s);
+      } catch {
+        // show empty state rather than infinite spinner
+      } finally {
+        setIsLoading(false);
+      }
     }
     load();
   }, [leagueId]);

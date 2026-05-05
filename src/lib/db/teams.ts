@@ -26,12 +26,13 @@ export async function updateLineup(teamId: string, lineup: UserTeam["lineup"]): 
 
 export async function getStandings(leagueId: string): Promise<StandingEntry[]> {
   const supabase = createClient();
-  const [{ data, error }, { data: teams }] = await Promise.all([
+  const [{ data, error }, { data: teams, error: teamsError }] = await Promise.all([
     supabase.from("standings_view").select("*").eq("league_id", leagueId).order("total_points", { ascending: false }),
     supabase.from("user_teams").select("user_id, matchday_points").eq("league_id", leagueId),
   ]);
 
   if (error) throw new Error(error.message);
+  if (teamsError) throw new Error(teamsError.message);
 
   const pointsMap: Record<string, Record<string, number>> = {};
   for (const t of teams ?? []) pointsMap[t.user_id] = t.matchday_points ?? {};

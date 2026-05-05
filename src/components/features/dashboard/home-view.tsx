@@ -51,38 +51,43 @@ export function HomeView() {
     const supabase = createClient();
 
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const cached = useLeagueStore.getState().appSettings;
-      const [prof, set, matchdays, sps, allMatches] = await Promise.all([
-        getProfile(user.id),
-        cached ? Promise.resolve(cached) : getAppSettings(leagueId),
-        getMatchdays(leagueId),
-        getSponsors(leagueId),
-        getDailyMatches(leagueId).catch(() => [] as DailyMatch[]),
-      ]);
-      if (!cached && set) useLeagueStore.getState().setAppSettings(set);
-      setProfile(prof);
-      setSettings(set);
-      setSponsors(sps);
-      setAllMatchdays(matchdays);
-      const calculated = matchdays.filter((m) => m.status === "calculated");
-      if (calculated.length > 0) setLastMatchday(calculated[0]);
-      if (prof) {
-        const [t, allPlayers] = await Promise.all([
-          getMyTeam(user.id, leagueId),
-          getPlayers(leagueId),
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const cached = useLeagueStore.getState().appSettings;
+        const [prof, set, matchdays, sps, allMatches] = await Promise.all([
+          getProfile(user.id),
+          cached ? Promise.resolve(cached) : getAppSettings(leagueId),
+          getMatchdays(leagueId),
+          getSponsors(leagueId),
+          getDailyMatches(leagueId).catch(() => [] as DailyMatch[]),
         ]);
-        if (!prof.is_admin && (!t || (t.players?.length ?? 0) === 0)) {
-          router.replace("/league/onboarding");
-          return;
+        if (!cached && set) useLeagueStore.getState().setAppSettings(set);
+        setProfile(prof);
+        setSettings(set);
+        setSponsors(sps);
+        setAllMatchdays(matchdays);
+        const calculated = matchdays.filter((m) => m.status === "calculated");
+        if (calculated.length > 0) setLastMatchday(calculated[0]);
+        if (prof) {
+          const [t, allPlayers] = await Promise.all([
+            getMyTeam(user.id, leagueId),
+            getPlayers(leagueId),
+          ]);
+          if (!prof.is_admin && (!t || (t.players?.length ?? 0) === 0)) {
+            router.replace("/league/onboarding");
+            return;
+          }
+          setTeam(t);
+          const existingIds = new Set(allPlayers.map((p) => p.id));
+          setMyPlayersCount((t?.players ?? []).filter((id) => existingIds.has(id)).length);
         }
-        setTeam(t);
-        const existingIds = new Set(allPlayers.map((p) => p.id));
-        setMyPlayersCount((t?.players ?? []).filter((id) => existingIds.has(id)).length);
+        setUpcomingMatches(filterUpcomingMatches(allMatches));
+      } catch {
+        // DB error: still hide spinner so user sees an empty page rather than infinite loading
+      } finally {
+        setIsLoading(false);
       }
-      setUpcomingMatches(filterUpcomingMatches(allMatches));
-      setIsLoading(false);
     }
     load();
 

@@ -35,6 +35,7 @@ export function AdminMatchdaysView() {
     if (!leagueId) return;
     Promise.all([getMatchdays(leagueId), getPlayers(leagueId)])
       .then(([m, p]) => { setMatchdays(m); setPlayers(p); })
+      .catch(() => { /* show empty state */ })
       .finally(() => setIsLoading(false));
   }, [leagueId]);
 

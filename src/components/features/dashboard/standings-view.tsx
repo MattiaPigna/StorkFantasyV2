@@ -30,19 +30,24 @@ export function StandingsView() {
   useEffect(() => {
     if (!leagueId) return;
     async function load() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      setMyUserId(user?.id ?? null);
-      const [data, scorers, matchdays] = await Promise.all([
-        getStandings(leagueId),
-        getTopScorers(leagueId),
-        getMatchdays(leagueId),
-      ]);
-      setStandings(data);
-      setTopScorers(scorers);
-      const calculated = matchdays.filter((m) => m.status === "calculated");
-      if (calculated.length > 0) setLastMatchdayId(calculated[0].id);
-      setIsLoading(false);
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        setMyUserId(user?.id ?? null);
+        const [data, scorers, matchdays] = await Promise.all([
+          getStandings(leagueId),
+          getTopScorers(leagueId),
+          getMatchdays(leagueId),
+        ]);
+        setStandings(data);
+        setTopScorers(scorers);
+        const calculated = matchdays.filter((m) => m.status === "calculated");
+        if (calculated.length > 0) setLastMatchdayId(calculated[0].id);
+      } catch {
+        // show empty state rather than infinite spinner
+      } finally {
+        setIsLoading(false);
+      }
     }
     load();
   }, [leagueId]);

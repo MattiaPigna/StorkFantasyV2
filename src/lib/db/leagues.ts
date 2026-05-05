@@ -96,10 +96,13 @@ export async function getLeagueMembers(leagueId: string): Promise<LeagueMemberDe
 
   const userIds = members.map((m) => m.user_id);
 
-  const [{ data: profiles }, { data: teams }] = await Promise.all([
+  const [{ data: profiles, error: profilesError }, { data: teams, error: teamsError }] = await Promise.all([
     supabase.from("profiles").select("id, team_name, manager_name").in("id", userIds),
     supabase.from("user_teams").select("user_id, total_points").eq("league_id", leagueId).in("user_id", userIds),
   ]);
+
+  if (profilesError) throw new Error(profilesError.message);
+  if (teamsError) throw new Error(teamsError.message);
 
   return members.map((m) => {
     const profile = (profiles ?? []).find((p) => p.id === m.user_id);

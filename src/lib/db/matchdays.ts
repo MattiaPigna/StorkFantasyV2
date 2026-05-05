@@ -21,7 +21,7 @@ export async function getMatchdayWithStats(id: string): Promise<Matchday | null>
     .eq("id", id)
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error && error.code !== "PGRST116") throw new Error(error.message);
   return data;
 }
 

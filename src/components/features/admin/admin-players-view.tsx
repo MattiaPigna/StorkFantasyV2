@@ -52,6 +52,7 @@ export function AdminPlayersView() {
     if (!leagueId) return;
     Promise.all([getAllPlayers(leagueId), getTournamentTeams(leagueId)])
       .then(([pl, t]) => { setPlayers(pl); setTeams(t); })
+      .catch(() => { /* show empty state */ })
       .finally(() => setIsLoading(false));
   }, [leagueId]);
 

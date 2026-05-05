@@ -83,7 +83,7 @@ export async function deletePlayer(id: string, leagueId: string): Promise<void> 
   if (!teams) return;
 
   const affected = teams.filter((t) => (t.players as string[]).includes(id));
-  await Promise.all(
+  const results = await Promise.all(
     affected.map((t) =>
       supabase.from("user_teams").update({
         players: (t.players as string[]).filter((pid: string) => pid !== id),
@@ -93,6 +93,8 @@ export async function deletePlayer(id: string, leagueId: string): Promise<void> 
       }).eq("id", t.id)
     )
   );
+  const updateError = results.find((r) => r.error);
+  if (updateError?.error) throw new Error(updateError.error.message);
 }
 
 export async function getTopScorers(leagueId: string): Promise<TopScorer[]> {

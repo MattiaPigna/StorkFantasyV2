@@ -34,31 +34,36 @@ export function LineupView() {
   useEffect(() => {
     if (!leagueId) return;
     async function load() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const [pl, t, s, matchdays] = await Promise.all([
-        getPlayers(leagueId),
-        getMyTeam(user.id, leagueId),
-        getAppSettings(leagueId),
-        getMatchdays(leagueId),
-      ]);
-      setPlayers(pl);
-      setTeam(t);
-      setSettings(s);
-      const size = s?.lineup_size ?? 11;
-      if (t?.lineup && t.lineup.length === size) {
-        setLineup(t.lineup);
-      } else {
-        setLineup(Array.from({ length: size }, (_, i) => ({ position: i, player_id: null })));
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const [pl, t, s, matchdays] = await Promise.all([
+          getPlayers(leagueId),
+          getMyTeam(user.id, leagueId),
+          getAppSettings(leagueId),
+          getMatchdays(leagueId),
+        ]);
+        setPlayers(pl);
+        setTeam(t);
+        setSettings(s);
+        const size = s?.lineup_size ?? 11;
+        if (t?.lineup && t.lineup.length === size) {
+          setLineup(t.lineup);
+        } else {
+          setLineup(Array.from({ length: size }, (_, i) => ({ position: i, player_id: null })));
+        }
+        if (matchdays.length > 0) {
+          const latest = matchdays[0];
+          setActiveMatchday(latest);
+          const stats = await getMatchdayStats(latest.id);
+          setMatchdayStats(stats);
+        }
+      } catch {
+        // show empty state rather than infinite spinner
+      } finally {
+        setIsLoading(false);
       }
-      if (matchdays.length > 0) {
-        const latest = matchdays[0];
-        setActiveMatchday(latest);
-        const stats = await getMatchdayStats(latest.id);
-        setMatchdayStats(stats);
-      }
-      setIsLoading(false);
     }
     load();
   }, [leagueId]);
