@@ -275,6 +275,18 @@ export function LandingPage() {
         .hexagon {
           clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
         }
+
+        @media (max-width: 639px) {
+          .sl-form-inner  { padding: 18px !important; }
+          .sl-tab-wrap    { margin-bottom: 14px !important; }
+          .sl-form-heading { margin-bottom: 10px !important; }
+          .sl-form-fields { gap: 10px !important; }
+          .sl-form-logo   { margin-bottom: 12px !important; }
+          .sl-form-btn    { margin-top: 2px !important; }
+          .sl-form-grid   { gap: 8px !important; }
+          .sl-form-footer { margin-top: 12px !important; }
+          .sl-input       { padding: 9px 12px !important; font-size: 13px !important; }
+        }
       `}</style>
 
       <main className="sl-body min-h-screen overflow-hidden relative flex" style={{ background: '#080a0d' }}>
@@ -478,11 +490,11 @@ export function LandingPage() {
         </div>
 
         {/* ── Right — Auth Form ── */}
-        <div className="w-full md:w-[440px] lg:w-[500px] flex items-center justify-center px-5 py-10 relative z-10">
-          <div className="sl-card sl-form-in w-full max-w-sm p-8">
+        <div className="w-full md:w-[440px] lg:w-[500px] flex items-center justify-center px-4 py-3 sm:py-10 relative z-10">
+          <div className="sl-card sl-form-in sl-form-inner w-full max-w-sm p-8">
 
             {/* Mobile logo */}
-            <div className="flex items-center gap-3 mb-8 md:hidden">
+            <div className="sl-form-logo flex items-center gap-3 mb-8 md:hidden">
               <div style={{
                 width: 44, height: 44, borderRadius: 10,
                 background: 'rgba(0,0,0,0.3)',
@@ -498,7 +510,7 @@ export function LandingPage() {
 
             {/* Tab switcher — nascosto per forgot-password ed email-sent */}
             {(mode === "login" || mode === "signup") && (
-              <div style={{
+              <div className="sl-tab-wrap" style={{
                 display: 'flex',
                 background: 'rgba(255,255,255,0.04)',
                 border: '1px solid rgba(255,255,255,0.08)',
@@ -531,7 +543,7 @@ export function LandingPage() {
 
             {/* Heading */}
             {mode !== "email-sent" && (
-              <div style={{ marginBottom: 24 }}>
+              <div className="sl-form-heading" style={{ marginBottom: 24 }}>
                 <h3 className="sl-title" style={{ fontSize: 30, color: '#fff', lineHeight: 1, marginBottom: 6 }}>
                   {mode === "login" && "Bentornato"}
                   {mode === "signup" && "Crea account"}
@@ -547,7 +559,7 @@ export function LandingPage() {
 
             {/* Forms */}
             {mode === "login" && (
-              <form onSubmit={loginForm.handleSubmit(handleLogin)} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <form className="sl-form-fields" onSubmit={loginForm.handleSubmit(handleLogin)} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.04em' }}>EMAIL</label>
                   <input className="sl-input" type="email" placeholder="la.tua@email.com" {...loginForm.register("email")} />
@@ -567,7 +579,7 @@ export function LandingPage() {
                   <input className="sl-input" type="password" placeholder="••••••••" {...loginForm.register("password")} />
                   {loginForm.formState.errors.password && <p style={{ fontSize: 11, color: '#f87171' }}>{loginForm.formState.errors.password.message}</p>}
                 </div>
-                <div style={{ marginTop: 6 }}>
+                <div className="sl-form-btn" style={{ marginTop: 6 }}>
                   <button type="submit" className="sl-btn" disabled={isLoading}>
                     {isLoading ? <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Loader2 size={16} className="animate-spin" />Accesso...</span> : "Accedi alla Lega"}
                   </button>
@@ -576,8 +588,8 @@ export function LandingPage() {
             )}
 
             {mode === "signup" && (
-              <form onSubmit={signupForm.handleSubmit(handleSignup)} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <form className="sl-form-fields" onSubmit={signupForm.handleSubmit(handleSignup)} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div className="sl-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.04em' }}>ALLENATORE</label>
                     <input className="sl-input" placeholder="Mario Rossi" {...signupForm.register("managerName")} />
@@ -599,7 +611,7 @@ export function LandingPage() {
                   <input className="sl-input" type="password" placeholder="Min. 8 caratteri" {...signupForm.register("password")} />
                   {signupForm.formState.errors.password && <p style={{ fontSize: 11, color: '#f87171' }}>{signupForm.formState.errors.password.message}</p>}
                 </div>
-                <div style={{ marginTop: 6 }}>
+                <div className="sl-form-btn" style={{ marginTop: 6 }}>
                   <button type="submit" className="sl-btn" disabled={isLoading}>
                     {isLoading ? <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Loader2 size={16} className="animate-spin" />Registrazione...</span> : "Entra nella Lega"}
                   </button>
@@ -613,7 +625,7 @@ export function LandingPage() {
                   <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.04em' }}>EMAIL</label>
                   <input name="email" className="sl-input" type="email" placeholder="la.tua@email.com" required />
                 </div>
-                <div style={{ marginTop: 6 }}>
+                <div className="sl-form-btn" style={{ marginTop: 6 }}>
                   <button type="submit" className="sl-btn" disabled={isLoading}>
                     {isLoading ? <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Loader2 size={16} className="animate-spin" />Invio...</span> : "Invia link di recupero"}
                   </button>
@@ -669,7 +681,7 @@ export function LandingPage() {
             )}
 
             {/* Footer */}
-            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: 24 }}>
+            <p className="sl-form-footer" style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: 24 }}>
               © 2025 StorkLeague · Fantacalcio Ufficiale
             </p>
           </div>
