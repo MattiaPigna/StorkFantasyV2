@@ -68,6 +68,14 @@ export function ProfileView() {
     }
   }
 
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    reset();
+    router.push("/");
+    router.refresh();
+  }
+
   async function handleLeaveLeague() {
     if (!profile || !activeLeague) return;
     if (activeLeague.owner_id === profile.id) {
@@ -156,6 +164,15 @@ export function ProfileView() {
           <Button onClick={handleSave} disabled={isSaving} className="w-full">
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {isSaving ? "Salvataggio..." : "Salva modifiche"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-red-500/10">
+        <CardContent className="pt-4">
+          <Button variant="destructive" className="w-full" onClick={handleLogout}>
+            <LogOut className="w-4 h-4" />
+            Esci dall&apos;app
           </Button>
         </CardContent>
       </Card>

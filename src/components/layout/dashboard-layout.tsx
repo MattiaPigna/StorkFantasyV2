@@ -280,8 +280,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Bottom nav Mobile only */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-stork-dark-card/95 backdrop-blur-md border-t border-stork-dark-border" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 12px)" }}>
-        <div className="flex overflow-x-auto scrollbar-none">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-stork-dark-card/95 backdrop-blur-md border-t border-stork-dark-border" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}>
+        <div className="flex justify-around">
           {[...navItems, { href: "/dashboard/profile", label: "Profilo", icon: User }].map((item) => {
             const active = pathname === item.href;
             return (
@@ -290,12 +290,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 style={active ? { color: `var(--league-primary)` } : undefined}
                 className={cn(
-                  "flex-shrink-0 flex flex-col items-center gap-1.5 pt-3 pb-1 px-4 text-[11px] font-medium transition-all min-w-[68px]",
+                  "flex-1 flex flex-col items-center gap-1 pt-2 pb-1 text-[10px] font-medium transition-all",
                   !active && "text-muted-foreground"
                 )}
               >
-                <item.icon className="w-6 h-6" style={active ? { filter: `drop-shadow(0 0 6px rgba(var(--league-primary-rgb), 0.8))` } : undefined} />
-                <span className="truncate">{item.label}</span>
+                <item.icon className="w-5 h-5" style={active ? { filter: `drop-shadow(0 0 6px rgba(var(--league-primary-rgb), 0.8))` } : undefined} />
+                <span className="truncate w-full text-center px-0.5">{item.label}</span>
               </Link>
             );
           })}
@@ -303,21 +303,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <Link
               href="/admin/matchdays"
               className={cn(
-                "flex-shrink-0 flex flex-col items-center gap-1.5 pt-3 pb-1 px-4 text-[11px] font-medium transition-all min-w-[68px]",
+                "flex-1 flex flex-col items-center gap-1 pt-2 pb-1 text-[10px] font-medium transition-all",
                 pathname.startsWith("/admin") ? "text-stork-gold" : "text-muted-foreground"
               )}
             >
-              <Shield className={cn("w-6 h-6", pathname.startsWith("/admin") && "drop-shadow-[0_0_8px_rgba(234,179,8,0.8)]")} />
+              <Shield className={cn("w-5 h-5", pathname.startsWith("/admin") && "drop-shadow-[0_0_8px_rgba(234,179,8,0.8)]")} />
               <span className="truncate">Admin</span>
             </Link>
           )}
-          <button
-            onClick={handleLogout}
-            className="flex-shrink-0 flex flex-col items-center gap-1.5 pt-3 pb-1 px-4 text-[11px] font-medium text-muted-foreground hover:text-red-400 transition-all min-w-[68px]"
-          >
-            <LogOut className="w-6 h-6" />
-            <span className="truncate">Esci</span>
-          </button>
         </div>
       </nav>
     </div>
