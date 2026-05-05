@@ -281,7 +281,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       {/* Bottom nav Mobile only */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-stork-dark-card/95 backdrop-blur-md border-t border-stork-dark-border" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}>
-        <div className="flex justify-around">
+        <div
+          className="w-full"
+          style={{ display: "grid", gridTemplateColumns: `repeat(${isAdmin ? 8 : 7}, 1fr)` }}
+        >
           {[...navItems, { href: "/dashboard/profile", label: "Profilo", icon: User }].map((item) => {
             const active = pathname === item.href;
             return (
@@ -290,11 +293,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 style={active ? { color: `var(--league-primary)` } : undefined}
                 className={cn(
-                  "flex-1 min-w-0 flex flex-col items-center gap-1 pt-2 pb-1 text-[10px] font-medium transition-all",
+                  "overflow-hidden flex flex-col items-center gap-1 pt-2 pb-1 text-[10px] font-medium transition-all",
                   !active && "text-muted-foreground"
                 )}
               >
-                <item.icon className="w-5 h-5" style={active ? { filter: `drop-shadow(0 0 6px rgba(var(--league-primary-rgb), 0.8))` } : undefined} />
+                <item.icon className="w-5 h-5 shrink-0" style={active ? { filter: `drop-shadow(0 0 6px rgba(var(--league-primary-rgb), 0.8))` } : undefined} />
                 <span className="truncate w-full text-center px-0.5">{item.label}</span>
               </Link>
             );
@@ -303,12 +306,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <Link
               href="/admin/matchdays"
               className={cn(
-                "flex-1 min-w-0 flex flex-col items-center gap-1 pt-2 pb-1 text-[10px] font-medium transition-all",
+                "overflow-hidden flex flex-col items-center gap-1 pt-2 pb-1 text-[10px] font-medium transition-all",
                 pathname.startsWith("/admin") ? "text-stork-gold" : "text-muted-foreground"
               )}
             >
-              <Shield className={cn("w-5 h-5", pathname.startsWith("/admin") && "drop-shadow-[0_0_8px_rgba(234,179,8,0.8)]")} />
-              <span className="truncate">Admin</span>
+              <Shield className={cn("w-5 h-5 shrink-0", pathname.startsWith("/admin") && "drop-shadow-[0_0_8px_rgba(234,179,8,0.8)]")} />
+              <span className="truncate w-full text-center px-0.5">Admin</span>
             </Link>
           )}
         </div>
