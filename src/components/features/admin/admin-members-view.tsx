@@ -13,6 +13,7 @@ import { getLeagueMembers, kickMember, type LeagueMemberDetail } from "@/lib/db/
 import { useLeagueStore } from "@/store/league";
 import { useToast } from "@/hooks/use-toast";
 import { createClient } from "@/lib/supabase/client";
+import { deleteUserCompletely } from "@/app/actions/users";
 
 export function AdminMembersView() {
   const { activeLeague } = useLeagueStore();
@@ -38,9 +39,10 @@ export function AdminMembersView() {
 
   async function handleKick(userId: string, teamName: string) {
     try {
-      await kickMember(leagueId, userId);
+      const { error } = await deleteUserCompletely(userId);
+      if (error) throw new Error(error);
       setMembers((prev) => prev.filter((m) => m.user_id !== userId));
-      toast({ title: `${teamName} rimosso dalla lega` });
+      toast({ title: `${teamName} eliminato`, description: "Account rimosso da Supabase." });
     } catch (err: unknown) {
       toast({ variant: "destructive", title: "Errore", description: err instanceof Error ? err.message : "Errore" });
     }
@@ -113,9 +115,9 @@ export function AdminMembersView() {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Rimuovere {member.team_name}?</AlertDialogTitle>
+                              <AlertDialogTitle>Eliminare {member.team_name}?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                {member.manager_name} verrà rimosso dalla lega. Perderà la sua squadra e tutti i progressi.
+                                L&apos;account di {member.manager_name} verrà eliminato definitivamente da Supabase. Non potrà più accedere all&apos;app. Azione irreversibile.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -124,7 +126,7 @@ export function AdminMembersView() {
                                 onClick={() => handleKick(member.user_id, member.team_name)}
                                 className="bg-destructive"
                               >
-                                Rimuovi
+                                Elimina account
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
