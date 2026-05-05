@@ -41,11 +41,13 @@ export async function createDailyMatch(
 
 export async function updateMatchScore(id: string, home_score: number | null, away_score: number | null): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("daily_matches")
     .update({ home_score, away_score })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Aggiornamento non riuscito: permesso negato.");
 }
 
 export async function deleteDailyMatch(id: string): Promise<void> {

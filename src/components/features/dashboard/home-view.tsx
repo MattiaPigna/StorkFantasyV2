@@ -55,15 +55,14 @@ export function HomeView() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const cached = useLeagueStore.getState().appSettings;
         const [profRaw, set, matchdays, sps, allMatches] = await Promise.all([
           getProfile(user.id),
-          cached ? Promise.resolve(cached) : getAppSettings(leagueId),
+          getAppSettings(leagueId),
           getMatchdays(leagueId),
           getSponsors(leagueId),
           getDailyMatches(leagueId).catch(() => [] as DailyMatch[]),
         ]);
-        if (!cached && set) useLeagueStore.getState().setAppSettings(set);
+        if (set) useLeagueStore.getState().setAppSettings(set);
         // Se il profilo manca (riga cancellata manualmente), ricrealo dai metadati auth
         let prof = profRaw;
         if (!prof) {

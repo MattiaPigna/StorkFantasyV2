@@ -52,13 +52,12 @@ export function MarketView({ onTeamChange }: { onTeamChange?: (team: UserTeam) =
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         setUserId(user.id);
-        const cached = useLeagueStore.getState().appSettings;
         const [pl, t, s] = await Promise.all([
           getPlayers(leagueId),
           getMyTeam(user.id, leagueId),
-          cached ? Promise.resolve(cached) : getAppSettings(leagueId),
+          getAppSettings(leagueId),
         ]);
-        if (!cached && s) useLeagueStore.getState().setAppSettings(s);
+        if (s) useLeagueStore.getState().setAppSettings(s);
         setPlayers(pl);
         setTeam(t);
         setSettings(s);
