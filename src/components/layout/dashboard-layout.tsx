@@ -290,7 +290,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 style={active ? { color: `var(--league-primary)` } : undefined}
                 className={cn(
-                  "flex-1 flex flex-col items-center gap-1 pt-2 pb-1 text-[10px] font-medium transition-all",
+                  "flex-1 min-w-0 flex flex-col items-center gap-1 pt-2 pb-1 text-[10px] font-medium transition-all",
                   !active && "text-muted-foreground"
                 )}
               >
@@ -303,7 +303,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <Link
               href="/admin/matchdays"
               className={cn(
-                "flex-1 flex flex-col items-center gap-1 pt-2 pb-1 text-[10px] font-medium transition-all",
+                "flex-1 min-w-0 flex flex-col items-center gap-1 pt-2 pb-1 text-[10px] font-medium transition-all",
                 pathname.startsWith("/admin") ? "text-stork-gold" : "text-muted-foreground"
               )}
             >
